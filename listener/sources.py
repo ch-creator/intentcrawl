@@ -185,7 +185,15 @@ def parse_linkedin_jobs(resp, query):
 
 def parse_hn(resp, query):
     out = []
-    for h in (resp or {}).get("hits", []):
+    if isinstance(resp, dict):
+        hits = resp.get("hits") or []
+    elif isinstance(resp, list):
+        hits = resp
+    else:
+        hits = []
+    for h in hits:
+        if not isinstance(h, dict):
+            continue
         oid = h.get("objectID")
         if not oid:
             continue

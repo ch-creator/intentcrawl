@@ -1,0 +1,158 @@
+"""Default free-collector configuration (Shopify / ERP / AI agency intent)."""
+
+FREE_COLLECTORS_DEFAULT = {
+    "enabled": False,
+    "replace_treg": True,
+    "incremental": True,
+    "twitter": {
+        "enabled": False,
+        "queries": [
+            "need shopify developer",
+            "looking for shopify agency",
+            "need ERP consultant",
+            "looking for Odoo developer",
+            "need AI automation",
+            "chatbot developer needed",
+            "need CRM system",
+            "migration help required",
+        ],
+        "limit": 40,
+        "twscrape_db": "data/twscrape.db",
+    },
+    "reddit_rss": {
+        "enabled": True,
+        "feeds": [
+            "https://www.reddit.com/r/shopify/new/.rss",
+            "https://www.reddit.com/r/ecommerce/new/.rss",
+            "https://www.reddit.com/r/SaaS/new/.rss",
+            "https://www.reddit.com/r/startups/new/.rss",
+            "https://www.reddit.com/r/smallbusiness/new/.rss",
+            "https://www.reddit.com/r/Entrepreneur/new/.rss",
+            "https://www.reddit.com/r/agency/new/.rss",
+        ],
+        "keywords": [],
+    },
+    "linkedin_jobs": {
+        "enabled": False,
+        "queries": [
+            "Shopify Developer",
+            "Shopify Plus",
+            "ERP Consultant",
+            "Odoo Consultant",
+            "NetSuite Consultant",
+            "AI Engineer",
+            "Automation Consultant",
+            "Software Agency",
+            "CRM Consultant",
+        ],
+        "location": "United States",
+    },
+    "linkedin_posts": {
+        "enabled": False,
+        "queries": [
+            "need developer",
+            "looking for agency",
+            "erp implementation",
+            "shopify problem",
+            "website migration",
+            "need consultant",
+            "automation help",
+        ],
+    },
+    "instagram": {
+        "enabled": False,
+        "hashtags": [
+            "shopify", "shopifystore", "ecommerce", "dtcbrand", "odoo", "erp", "crm",
+            "automation", "artificialintelligence", "chatbot",
+        ],
+        "posts_per_tag": 15,
+    },
+    "facebook_pages": {
+        "enabled": False,
+        "searches": [
+            "shopify help",
+            "erp help",
+            "need developer",
+            "looking for consultant",
+            "business automation",
+        ],
+    },
+    "facebook_groups": {
+        "enabled": False,
+        "groups": [
+            "Shopify Entrepreneurs",
+            "Ecommerce Entrepreneurs",
+            "ERP Community",
+            "Odoo Community",
+            "Small Business Owners",
+        ],
+    },
+    "hn": {
+        "enabled": True,
+        "queries": [
+            "shopify",
+            "erp",
+            "crm",
+            "automation",
+            "startup",
+            "saas",
+            "artificial intelligence",
+        ],
+    },
+    "funding_rss": {
+        "enabled": True,
+        "feeds": [
+            "https://techcrunch.com/category/startups/feed/",
+            "https://news.ycombinator.com/rss",
+            "https://www.ycombinator.com/blog/feed/",
+            "https://www.producthunt.com/feed",
+        ],
+        "keywords": [],
+    },
+    "rss_extra": {
+        "enabled": True,
+        "feeds": [
+            "https://hnrss.org/newest?q=shopify",
+            "https://hnrss.org/newest?q=erp",
+            "https://hnrss.org/newest?q=odoo",
+            "https://hnrss.org/newest?q=saas",
+            "https://hnrss.org/newest?q=ai+automation",
+        ],
+        "keywords": [],
+    },
+}
+
+LEAD_DETECTION_RULES_DEFAULT = {
+    "intent": {
+        "looking for": 10,
+        "need help": 10,
+        "need developer": 12,
+        "recommend agency": 15,
+        "recommend consultant": 15,
+        "hire": 8,
+        "budget": 6,
+        "vendor": 6,
+        "implementation partner": 12,
+        "proposal": 8,
+        "rfp": 10,
+    },
+    "pain": {
+        "checkout issue": 10,
+        "conversion problem": 10,
+        "migration failed": 12,
+        "inventory issue": 8,
+        "manual process": 8,
+        "customer support issue": 8,
+        "crm problem": 10,
+        "data sync issue": 10,
+        "erp issue": 12,
+        "integration issue": 10,
+    },
+    "negative": {
+        "job seeker": -10,
+        "open to work": -15,
+        "giveaway": -15,
+        "airdrop": -20,
+        "student project": -8,
+    },
+}

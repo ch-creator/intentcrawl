@@ -1,0 +1,11 @@
+# Optional dependencies for free collectors (install only what you use).
+# Core app still runs on Python 3.10+ stdlib alone.
+
+# X / Twitter search (CLI must be on PATH after install)
+# twscrape
+
+# Instagram hashtags
+# instaloader
+
+# LinkedIn / Facebook browser automation (install browsers: playwright install chromium)
+# playwright

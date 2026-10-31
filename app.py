@@ -34,6 +34,7 @@ def main():
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--data", default=os.path.join(ROOT, "data"), help="directory for config.json and signals.db")
     ap.add_argument("--run-once", action="store_true", help="run one pass without the web UI")
+    ap.add_argument("--signal", type=int, default=None, help="lead signal id for --run-once")
     ap.add_argument("--no-browser", action="store_true")
     ap.add_argument("--catalog", metavar="QUERY", help="search the Treg catalog (no token needed) and exit")
     ap.add_argument("--import", dest="import_file", metavar="FILE", help="import signals from a JSON file and exit")
@@ -50,6 +51,7 @@ def main():
     os.makedirs(args.data, exist_ok=True)
     config = Config(os.path.join(args.data, "config.json"))
     store = Store(os.path.join(args.data, "signals.db"))
+    store.ensure_default_lead_signal(config.data)
     runner = Runner(config, store)
 
     if args.import_file:
@@ -58,11 +60,13 @@ def main():
         rules = config.data.get("rules")
         for s in rows:
             s["score"], s["persona"], s["matched"] = score_signal(s, rules)
-        print(f"received {len(rows)}, new {store.upsert_signals(rows)}")
+        lid = config.data.get("active_lead_signal_id") or store.ensure_default_lead_signal(config.data)
+        print(f"received {len(rows)}, new {store.upsert_signals(rows, lead_signal_id=int(lid))}")
         return 0
 
     if args.run_once:
-        result = runner.run()
+        lid = args.signal or config.data.get("active_lead_signal_id") or store.ensure_default_lead_signal(config.data)
+        result = runner.run(int(lid))
         for line in result.get("log", [result.get("error", "")]):
             print(line)
         return 0 if result.get("ok") else 1

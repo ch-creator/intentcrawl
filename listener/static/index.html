@@ -1,379 +1,312 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lead Signal Listener</title>
-<link rel="stylesheet" href="/fonts.css">
-<style>
-  /* Visual language follows treg.to: neutral canvas, hairline borders, ink buttons, mono metadata. */
-  :root {
-    --bg:#f8f8f8; --surface:#fff; --panel:#f8f8f8; --panel2:#f0f0f0;
-    --ink:#1a1a1a; --muted:#7c7c7c; --muted2:#989898;
-    --line:rgba(0,0,0,.1); --line2:rgba(37,37,34,.2);
-    --mint:#7fdcae; --mint-soft:#e3f8ec; --green:#118453; --amber:#ba6603; --amber-soft:#fbf0e3; --red:#c0362f; --teal:#1a7da6;
-    --shadow-sm:0 2px 2px #00000008; --shadow-lg:0 4px 18px #00000009, 0 1px 2px #0000000a;
-    --r:20px; --rb:12px;
-    --ease:cubic-bezier(.2,.72,.25,1);
-    --display:"Geist Pixel", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
-    --sans:"Inter", "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-    --mono:"DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  * { box-sizing:border-box; }
-  html { -webkit-font-smoothing:antialiased; }
-  body { margin:0; font:14px/1.55 var(--sans); background:var(--bg); color:var(--ink); }
-  a { color:var(--ink); text-decoration:underline; text-decoration-color:var(--line2); text-underline-offset:3px; }
-  a:hover { text-decoration-color:var(--ink); }
-  code { font-family:var(--mono); font-size:12.5px; background:var(--panel2); padding:1px 6px; border-radius:6px; }
-
-  /* nav */
-  .nav { position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:16px; padding:16px 40px;
-         background:#ffffffeb; backdrop-filter:saturate(1.4) blur(10px); -webkit-backdrop-filter:saturate(1.4) blur(10px); border-bottom:1px solid var(--line); }
-  .brand { display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-.01em; }
-  .glyph { width:28px; height:28px; border-radius:8px; background:var(--ink); color:#fff; display:grid; place-items:center; font:15px var(--display); }
-  .brand small { font:12px var(--mono); color:var(--muted); font-weight:400; }
-  .brand small a { color:inherit; text-decoration:underline; text-decoration-color:var(--line2); }
-  .brand small a:hover { color:var(--ink); text-decoration-color:var(--ink); }
-  .seg { margin-left:auto; display:flex; gap:4px; padding:4px; background:var(--panel2); border-radius:99px; }
-  .seg button { border:1px solid transparent; background:transparent; color:var(--muted); padding:6px 16px; border-radius:99px; font:500 13px var(--sans); cursor:pointer; transition:all .2s var(--ease); }
-  .seg button:hover { color:var(--ink); }
-  .seg button[aria-pressed=true] { background:var(--ink); color:#fff; }
-
-  main { padding:36px 40px 80px; max-width:1360px; margin:0 auto; }
-
-  /* hero */
-  .kicker { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--surface); color:var(--muted);
-            padding:5px 12px; border-radius:99px; font:12px var(--mono); }
-  .dot { width:7px; height:7px; border-radius:50%; background:var(--muted2); }
-  .dot.live { background:var(--green); box-shadow:0 0 0 3px #11845322; }
-  .hero { display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:24px; }
-  .hero h1 { font:400 44px/1.05 var(--display); letter-spacing:0; margin:14px 0 6px; }
-  .hero p { margin:0; color:var(--muted); max-width:560px; }
-  .hero .actions { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-
-  /* buttons */
-  .btn { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--ink); background:var(--ink); color:#fff; padding:9px 16px;
-         border-radius:9px; font:500 13.5px var(--sans); cursor:pointer; text-decoration:none; transition:all .2s var(--ease); white-space:nowrap; }
-  .btn:hover { background:#333; border-color:#333; }
-  .btn:disabled { opacity:.45; cursor:not-allowed; }
-  .btn.ghost { background:var(--surface); color:var(--ink); border-color:var(--line2); }
-  .btn.ghost:hover { border-color:var(--ink); background:var(--surface); }
-  .btn .k { font:11px var(--mono); opacity:.6; }
-
-  /* stats */
-  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr)); gap:12px; margin-bottom:16px; }
-  .stat { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
-  .stat b { display:block; font:400 30px/1.1 var(--display); }
-  .stat span { font:12px var(--mono); color:var(--muted); text-transform:lowercase; }
-  .stat.accent { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .stat.accent span { color:#b5b5b5; }
-
-  /* cards */
-  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px 22px; margin-bottom:16px; }
-  .card h2 { font:600 15px var(--sans); margin:0 0 4px; letter-spacing:-.01em; }
-  .card .desc { color:var(--muted); font-size:13px; margin:0 0 16px; }
-  .eyebrow-link { display:inline-block; text-decoration:none; }
-  .eyebrow-link:hover { color:var(--ink); }
-  .eyebrow { font:12px var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
-
-  /* terminal log */
-  .term { background:var(--ink); border-radius:16px; overflow:hidden; margin-bottom:16px; }
-  .term summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:12px 16px; color:#d0d0d0; font:12.5px var(--mono); }
-  .term summary::-webkit-details-marker { display:none; }
-  .term summary .lights { display:flex; gap:6px; }
-  .term summary .lights i { width:10px; height:10px; border-radius:50%; background:#3a3a3a; }
-  .term summary .prompt { color:var(--mint); }
-  .term summary .chev { margin-left:auto; color:#7c7c7c; }
-  .term pre { margin:0; padding:4px 16px 16px; max-height:320px; overflow:auto; font:12.5px/1.7 var(--mono); color:#e8e8e8; white-space:pre-wrap; }
-  .term pre .ok { color:var(--mint); } .term pre .err { color:#ff8f86; } .term pre .skip { color:#7c7c7c; } .term pre .done { color:#fff; font-weight:500; }
-
-  /* filters */
-  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; padding-bottom:16px; border-bottom:1px solid var(--line); margin-bottom:4px; }
-  label { display:block; font:11.5px var(--mono); color:var(--muted); margin-bottom:5px; }
-  input[type=text], input[type=password], input[type=number], select, textarea {
-    border:1px solid var(--line2); border-radius:10px; padding:8px 11px; font:13.5px var(--sans); background:var(--surface); color:var(--ink);
-    transition:box-shadow .15s var(--ease), border-color .15s var(--ease); }
-  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--ink); box-shadow:0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink); }
-  textarea { width:100%; min-height:120px; font:12.5px/1.6 var(--mono); resize:vertical; }
-  select { appearance:none; padding-right:28px; background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-           background-position:calc(100% - 14px) 52%, calc(100% - 9px) 52%; background-size:5px 5px; background-repeat:no-repeat; }
-
-  /* lead list */
-  .lead { display:grid; grid-template-columns:64px 1fr 210px; gap:18px; padding:18px 4px; border-bottom:1px solid var(--line); transition:background .15s var(--ease); }
-  .lead:hover { background:#fcfcfb; }
-  .lead:last-child { border-bottom:0; }
-  .score { font:400 26px/1 var(--display); text-align:center; padding:10px 0 8px; border-radius:12px; background:var(--panel2); color:var(--muted); }
-  .score.high { background:var(--mint-soft); color:#0d6b40; }
-  .score.mid { background:var(--amber-soft); color:var(--amber); }
-  .score small { display:block; font:10.5px var(--mono); margin-top:6px; opacity:.85; }
-  .meta { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px; font:12px var(--mono); color:var(--muted); }
-  .pill { display:inline-flex; align-items:center; gap:5px; font:11.5px var(--mono); padding:2px 9px; border-radius:99px; border:1px solid var(--line); background:var(--surface); color:var(--ink); }
-  .pill.src::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--c, var(--muted2)); }
-  .pill.src-reddit { --c:#ff4500; } .pill.src-x { --c:#1a1a1a; } .pill.src-hn { --c:#ff6600; }
-  .pill.src-linkedin, .pill.src-linkedin_jobs { --c:#0a66c2; } .pill.src-facebook, .pill.src-facebook_group { --c:#1877f2; } .pill.src-instagram, .pill.src-instagram_reels { --c:#e1306c; } .pill.src-funding { --c:var(--green); }
-  .pill.match { background:var(--panel); border-color:transparent; color:var(--muted); }
-  .lead h3 { margin:0 0 4px; font:600 14.5px/1.4 var(--sans); letter-spacing:-.005em; }
-  .lead h3 a { text-decoration:none; } .lead h3 a:hover { text-decoration:underline; }
-  .snippet { color:#3d3d3d; max-height:4.7em; overflow:hidden; cursor:pointer; position:relative; }
-  .snippet.open { max-height:none; }
-  .foot { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; font:12px var(--mono); color:var(--muted); }
-  .foot a { font:12px var(--mono); }
-  .side { display:flex; flex-direction:column; gap:8px; }
-  .side .who { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .side select, .side input { width:100%; font-size:12.5px; padding:6px 10px; }
-  .side select { padding-right:26px; }
-  .empty { text-align:center; padding:56px 20px; color:var(--muted); }
-  .empty b { display:block; font:400 22px var(--display); color:var(--ink); margin-bottom:6px; }
-  .count { font:12px var(--mono); color:var(--muted); margin-top:12px; }
-
-  /* sources */
-  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(330px, 1fr)); gap:14px; }
-  .pcard { border:1px solid var(--line); border-radius:var(--r); background:var(--surface); overflow:hidden; transition:all .2s var(--ease); }
-  .pcard:hover { border-color:var(--line2); box-shadow:var(--shadow-lg); }
-  .pcard .ph { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--panel); border-bottom:1px solid var(--line); }
-  .pcard .ph b { font-weight:600; }
-  .pcard .ph .price { margin-left:auto; font:11.5px var(--mono); color:var(--muted); text-align:right; }
-  .pcard .pt { padding:14px 16px; }
-  .pcard textarea { min-height:112px; }
-  .switch { position:relative; width:34px; height:20px; flex:none; }
-  .switch input { opacity:0; width:0; height:0; }
-  .switch span { position:absolute; inset:0; background:var(--line2); border-radius:99px; cursor:pointer; transition:background .2s var(--ease); }
-  .switch span::after { content:""; position:absolute; left:3px; top:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:transform .2s var(--ease); }
-  .switch input:checked + span { background:var(--ink); }
-  .switch input:checked + span::after { transform:translateX(14px); }
-
-  /* settings */
-  .fields { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:14px; }
-  .fields input { width:100%; }
-  .tokenrow { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .tokenrow input { flex:1; min-width:280px; font-family:var(--mono); }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:16px; }
-  .msg { font:12.5px var(--mono); }
-  .msg.ok { color:var(--green); } .msg.bad { color:var(--red); }
-  .note { font:12px var(--mono); color:var(--muted); margin-top:12px; }
-  .state { display:inline-flex; align-items:center; gap:8px; margin-top:12px; font:12px var(--mono); color:var(--muted); }
-
-  .lang { display:flex; gap:2px; padding:3px; border:1px solid var(--line); border-radius:99px; background:var(--surface); }
-  .lang button { border:0; background:transparent; color:var(--muted); padding:4px 10px; border-radius:99px; font:500 12px var(--mono); cursor:pointer; transition:all .2s var(--ease); }
-  .lang button[aria-pressed=true] { background:var(--ink); color:#fff; }
-
-  .catlist { margin-top:10px; display:flex; flex-direction:column; gap:6px; max-height:260px; overflow:auto; }
-  .catitem { border:1px solid var(--line); border-radius:10px; padding:8px 10px; cursor:pointer; transition:border-color .15s var(--ease); }
-  .catitem:hover { border-color:var(--ink); }
-  .catitem code { background:transparent; padding:0; font-size:12px; }
-  .catitem div { font-size:12px; color:var(--muted); }
-
-  .foot-bar { max-width:1360px; margin:0 auto; padding:24px 40px 40px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
-              border-top:1px solid var(--line); font:12px var(--mono); color:var(--muted); }
-  .foot-bar a { color:var(--ink); text-decoration:none; }
-  .foot-bar a:hover { text-decoration:underline; }
-  .foot-bar .sep { margin:0 6px; color:var(--muted2); }
-
-  .agentbar { display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:var(--ink); color:#fff; border-radius:var(--r); padding:16px 22px; margin-bottom:16px; }
-  .agentbar-text { display:flex; flex-direction:column; gap:2px; flex:1; min-width:260px; }
-  .agentbar-text b { font:600 15px var(--sans); }
-  .agentbar-text span { font:12.5px var(--mono); color:#b5b5b5; }
-  .agentbar-actions { display:flex; align-items:center; gap:10px; }
-  .agentbar .btn { background:#fff; color:var(--ink); border-color:#fff; }
-  .agentbar .btn:hover { background:var(--mint); border-color:var(--mint); }
-  .agentbar .msg.ok { color:var(--mint); }
-  .badge-new { display:inline-block; font:500 10.5px var(--mono); padding:1px 7px; border-radius:99px; background:var(--mint); color:#0d5c38; letter-spacing:.03em; }
-  .pager { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; }
-  .pager .count { margin-top:0; }
-  .hidden { display:none !important; }
-  /* status board */
-  .board { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:8px; margin-bottom:16px; }
-  .board button { text-align:left; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:12px 14px; cursor:pointer; color:var(--ink); transition:all .15s var(--ease); }
-  .board button:hover { border-color:var(--line2); box-shadow:var(--shadow-sm); }
-  .board button b { display:block; font:400 24px/1.1 var(--display); }
-  .board button span { display:flex; align-items:center; gap:6px; font:12px var(--mono); color:var(--muted); margin-top:4px; }
-  .board button span::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--c, var(--muted2)); }
-  .board .b-new { --c:#1a1a1a; } .board .b-qualified { --c:var(--green); } .board .b-contacted { --c:#0a66c2; } .board .b-replied { --c:#e1306c; } .board .b-ignored { --c:#c2c2c2; }
-  .board button[aria-pressed=true] { background:var(--ink); border-color:var(--ink); color:#fff; }
-  .board button[aria-pressed=true] span { color:#b5b5b5; }
-  .board button[aria-pressed=true].b-new span::before { background:#fff; }
-  /* note button + modal */
-  .notebtn { text-align:left; font:12.5px var(--sans); padding:6px 10px; border:1px dashed var(--line2); border-radius:10px; background:transparent; color:var(--muted); cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all .15s var(--ease); }
-  .notebtn:hover { border-color:var(--ink); color:var(--ink); }
-  .notebtn.has { border-style:solid; background:var(--amber-soft); border-color:transparent; color:#5c4210; }
-  .modal { position:fixed; inset:0; background:rgba(20,20,20,.38); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px; }
-  .modal-box { width:min(520px, 100%); background:var(--surface); border-radius:var(--r); box-shadow:var(--shadow-lg); padding:20px 22px; }
-  .modal-box h2 { font:600 15px var(--sans); margin:0 0 4px; }
-  .modal-box .ctx { font:12px var(--mono); color:var(--muted); margin:0 0 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .modal-box textarea { min-height:140px; font:13.5px/1.6 var(--sans); }
-  .modal-foot { display:flex; align-items:center; gap:10px; margin-top:14px; }
-  .modal-foot .hint { font:11.5px var(--mono); color:var(--muted); margin-right:auto; }
-  @media (max-width: 820px) { .board { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 820px) {
-    .nav, main { padding-left:18px; padding-right:18px; }
-    .nav { flex-wrap:wrap; }
-    .lead { grid-template-columns:52px 1fr; } .side { grid-column:1 / -1; flex-direction:row; flex-wrap:wrap; }
-    .hero h1 { font-size:34px; }
-  }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/soft-ui-theme.css">
 </head>
 <body>
-<nav class="nav">
-  <div class="brand"><span class="glyph">L</span>Lead Signal Listener <small>/ powered by <a href="https://treg.to" target="_blank" rel="noopener">treg.to</a></small></div>
-  <div class="seg" role="tablist">
-    <button data-tab="leads" aria-pressed="true" data-i18n="tab_leads"></button>
-    <button data-tab="sources" aria-pressed="false" data-i18n="tab_sources"></button>
-    <button data-tab="settings" aria-pressed="false" data-i18n="tab_settings"></button>
+<div class="app-shell" id="appShell">
+<aside class="sidebar surface" aria-label="Navigation">
+  <div class="sidebar-brand brand">
+    <span class="glyph" aria-hidden="true">LS</span>
+    <span>
+      <strong>Lead Signal Listener</strong>
+      <small>powered by <a href="https://treg.to" target="_blank" rel="noopener">treg.to</a></small>
+    </span>
   </div>
-  <div class="lang" aria-label="Language">
-    <button data-lang="en">EN</button>
-    <button data-lang="zh">中文</button>
-  </div>
-</nav>
-
-<main>
-  <!-- LEADS -->
-  <section id="tab-leads">
-    <div class="hero">
+  <nav class="seg sidebar-nav" role="tablist" aria-label="Sections">
+    <button type="button" data-tab="leads" aria-pressed="true" data-i18n="tab_leads"></button>
+    <button type="button" data-tab="lead-signals" aria-pressed="false" data-i18n="tab_signals"></button>
+    <button type="button" data-tab="sources" aria-pressed="false" data-i18n="tab_sources"></button>
+    <button type="button" data-tab="settings" aria-pressed="false" data-i18n="tab_settings"></button>
+  </nav>
+  <div class="sidebar-block well">
+    <div class="sidebar-kicker kicker"><span class="dot" id="liveDot"></span><span id="kickerText">loading…</span></div>
+    <div id="runLive" class="sidebar-run hidden" aria-live="polite">
+      <span class="dot live" aria-hidden="true"></span>
       <div>
-        <span class="kicker"><span class="dot" id="liveDot"></span><span id="kickerText">loading…</span></span>
-        <h1 data-i18n="h_leads"></h1>
-        <p id="leadsIntro"></p>
+        <b id="runLiveSignal"></b>
+        <small id="runLivePlatform"></small>
       </div>
-      <div class="actions">
-        <a class="btn ghost" id="exportCsv" href="#" data-i18n="export_csv"></a>
-        <a class="btn ghost" id="exportJson" href="#" data-i18n="export_json"></a>
-        <button class="btn" id="runBtn"><span data-i18n="run_now"></span> <span class="k">↵</span></button>
+    </div>
+  </div>
+</aside>
+
+<div class="app-body">
+<button type="button" class="sidebar-toggle btn button" id="sidebarToggle" aria-expanded="true" aria-controls="appShell" data-i18n="nav_menu"></button>
+<main class="main-content">
+  <section id="tab-leads">
+    <div id="leadsListView">
+      <div class="hero">
+        <div>
+          <h1 data-i18n="h_leads"></h1>
+          <p id="leadsSignalCrumb" class="kicker hidden"></p>
+          <p id="leadsIntro" class="muted"></p>
+        </div>
+        <div class="actions leads-hero-actions">
+          <button type="button" class="btn button button--primary btn-primary" id="leadsRunBtn"><span data-i18n="run_now"></span></button>
+          <a class="btn button" id="leadsExportCsv" href="#" data-i18n="export_csv"></a>
+          <a class="btn button" id="leadsExportJson" href="#" data-i18n="export_json"></a>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <details class="term surface" id="termBox">
+        <summary><span class="prompt">LOG</span><span id="runState">python app.py --run-once</span><span class="chev" data-i18n="last_log"></span></summary>
+        <pre id="log"></pre>
+      </details>
+
+      <div class="board" id="board"></div>
+
+      <div class="card surface">
+        <div class="card-body">
+          <div class="filters well">
+            <div><label class="form-label" for="fSource" data-i18n="lb_source"></label><select class="form-select" id="fSource"><option value="" data-i18n="all"></option></select></div>
+            <div><label class="form-label" for="fPersona" data-i18n="lb_persona"></label><select class="form-select" id="fPersona"><option value="" data-i18n="all"></option><option>saas</option><option>dtc</option><option>other</option></select></div>
+            <div><label class="form-label" for="fScope" data-i18n="lb_scope"></label><select class="form-select" id="fScope"><option value="" data-i18n="scope_all"></option><option value="today" data-i18n="scope_today"></option><option value="last_run" data-i18n="scope_last"></option></select></div>
+          <div><label class="form-label" for="fSignal" data-i18n="lb_signal"></label><select class="form-select" id="fSignal" aria-label="Listener"></select></div>
+            <div><label class="form-label" for="fSort" data-i18n="lb_sort"></label><select class="form-select" id="fSort"><option value="score" data-i18n="sort_score"></option><option value="recent" data-i18n="sort_recent"></option></select></div>
+            <div><label class="form-label" for="fMin" data-i18n="lb_min"></label><input class="form-control" type="number" id="fMin" value="20" style="width:90px"></div>
+            <div style="flex:1;min-width:200px"><label class="form-label" for="fQ" data-i18n="lb_search"></label><input class="form-control" type="text" id="fQ" data-i18n-ph="search_ph"></div>
+            <button type="button" class="btn button" id="refreshBtn" data-i18n="refresh"></button>
+          </div>
+          <div id="rows"></div>
+          <div class="pager"><span class="count" id="countInfo"></span><button type="button" class="btn button hidden" id="moreBtn" data-i18n="more"></button></div>
+        </div>
       </div>
     </div>
 
-    <div class="stats" id="stats"></div>
-
-    <details class="term" id="termBox">
-      <summary><span class="lights"><i></i><i></i><i></i></span><span class="prompt">$</span><span id="runState">python app.py --run-once</span><span class="chev" data-i18n="last_log"></span></summary>
-      <pre id="log"></pre>
-    </details>
-
-    <div class="board" id="board"></div>
-
-    <div class="card">
-      <div class="filters">
-        <div><label data-i18n="lb_source"></label><select id="fSource"><option value="" data-i18n="all"></option><option>reddit</option><option>x</option><option>hn</option><option>linkedin</option><option>linkedin_jobs</option><option>funding</option></select></div>
-        <div><label data-i18n="lb_persona"></label><select id="fPersona"><option value="" data-i18n="all"></option><option>saas</option><option>dtc</option><option>other</option></select></div>
-        <div><label data-i18n="lb_scope"></label><select id="fScope"><option value="" data-i18n="scope_all"></option><option value="last_run" data-i18n="scope_last"></option></select></div>
-        <div><label data-i18n="lb_sort"></label><select id="fSort"><option value="score" data-i18n="sort_score"></option><option value="recent" data-i18n="sort_recent"></option></select></div>
-        <div><label data-i18n="lb_min"></label><input type="number" id="fMin" value="20" style="width:90px"></div>
-        <div style="flex:1;min-width:200px"><label data-i18n="lb_search"></label><input type="text" id="fQ" data-i18n-ph="search_ph" style="width:100%"></div>
-        <button class="btn ghost" id="refreshBtn" data-i18n="refresh"></button>
+    <div id="leadDetailView" class="lead-detail-page hidden">
+      <div class="detail-page-nav">
+        <a href="/" class="btn button" id="leadDetailBack" data-i18n="detail_back"></a>
       </div>
-      <div id="rows"></div>
-      <div class="pager"><span class="count" id="countInfo"></span><button class="btn ghost hidden" id="moreBtn" data-i18n="more"></button></div>
+      <div class="card surface lead-detail-card">
+        <div class="card-body" id="leadDetailBody"></div>
+      </div>
     </div>
   </section>
 
-  <!-- SOURCES -->
+  <section id="tab-lead-signals" class="hidden">
+    <div class="hero">
+      <div>
+        <span class="kicker" data-i18n="k_signals"></span>
+        <h1 data-i18n="h_signals"></h1>
+        <p class="muted" data-i18n="signals_intro"></p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn button button--primary btn-primary" id="newSignalBtn" data-i18n="signal_new"></button>
+      </div>
+    </div>
+    <div id="signalList" class="signal-list"></div>
+  </section>
+
   <section id="tab-sources" class="hidden">
     <div class="hero">
-      <div><span class="kicker" data-i18n="k_sources"></span><h1 data-i18n="h_sources"></h1>
-        <p data-i18n="sources_intro"></p></div>
-      <div class="actions"><span class="msg" id="srcMsg"></span><button class="btn" id="saveSources" data-i18n="save_config"></button></div>
+      <div>
+        <span class="kicker" data-i18n="k_sources"></span>
+        <h1 data-i18n="h_sources"></h1>
+        <p class="muted" data-i18n="simple_intro"></p>
+      </div>
+      <div class="actions"><span class="msg" id="srcMsg" aria-live="polite"></span><button type="button" class="btn button button--primary btn-primary" id="saveSimple" data-i18n="save_config"></button></div>
     </div>
-    <div class="agentbar">
+
+    <div id="listenersEditorHome">
+    <div id="listenersEditorRoot">
+    <div class="card surface signal-editor-bar">
+      <div class="card-body signal-editor-row">
+        <div>
+          <label class="form-label" for="editSignalSelect" data-i18n="signal_editing"></label>
+          <select class="form-select" id="editSignalSelect"></select>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <label class="form-label" for="editSignalName" data-i18n="signal_name"></label>
+          <input class="form-control" type="text" id="editSignalName" data-i18n-ph="signal_name_ph">
+        </div>
+        <div class="signal-editor-actions">
+          <button type="button" class="btn button" id="renameSignalBtn" data-i18n="signal_rename"></button>
+          <button type="button" class="btn button" id="newSignalFromEditor" data-i18n="signal_new"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="listenersSimple" class="card surface">
+      <div class="card-body">
+        <h2 data-i18n="simple_prompt_title"></h2>
+        <p class="desc" data-i18n="simple_prompt_hint"></p>
+        <textarea class="form-control" id="simplePrompt" rows="3" data-i18n-ph="simple_prompt_ph"></textarea>
+
+        <div class="simple-kw-grid">
+          <div>
+            <label class="form-label" for="simpleInclude" data-i18n="simple_include_label"></label>
+            <p class="note" data-i18n="simple_include_hint"></p>
+            <textarea class="form-control" id="simpleInclude" rows="6" data-i18n-ph="simple_include_ph"></textarea>
+          </div>
+          <div>
+            <label class="form-label" for="simpleIgnore" data-i18n="simple_ignore_label"></label>
+            <p class="note" data-i18n="simple_ignore_hint"></p>
+            <textarea class="form-control" id="simpleIgnore" rows="6" data-i18n-ph="simple_ignore_ph"></textarea>
+          </div>
+        </div>
+
+        <h2 style="margin-top:1.25rem" data-i18n="simple_platforms_title"></h2>
+        <p class="desc" id="simplePlatformsHint" data-i18n="simple_platforms_hint"></p>
+        <div class="platform-grid" id="simplePlatforms"></div>
+      </div>
+    </div>
+    </div><!-- /listenersEditorRoot -->
+    </div><!-- /listenersEditorHome -->
+
+    <p class="legacy-toggle-row">
+      <button type="button" class="btn button" id="toggleLegacy" data-i18n="show_legacy"></button>
+    </p>
+
+    <!-- LEGACY: advanced listener configuration (backup). Kept for power users; not removed. -->
+    <div id="listenersLegacy" class="hidden">
+    <div class="agentbar surface">
       <div class="agentbar-text"><b data-i18n="agent_title"></b><span data-i18n="agent_desc"></span></div>
-      <div class="agentbar-actions"><span class="msg" id="agentMsg"></span><button class="btn" id="copyPrompt" data-i18n="agent_btn"></button></div>
+      <div class="agentbar-actions"><span class="msg" id="agentMsg" aria-live="polite"></span><button type="button" class="btn button button--primary btn-primary" id="copyPrompt" data-i18n="agent_btn"></button></div>
     </div>
-    <div class="card">
-      <div class="eyebrow" data-i18n="focus_eb"></div>
-      <h2 data-i18n="focus_title"></h2>
-      <p class="desc" data-i18n="focus_hint"></p>
-      <input type="text" id="focus" data-i18n-ph="focus_ph" style="width:100%" maxlength="300">
+    <div class="card surface">
+      <div class="card-body">
+        <div class="eyebrow" data-i18n="focus_eb"></div>
+        <h2 data-i18n="focus_title"></h2>
+        <p class="desc" data-i18n="focus_hint"></p>
+        <input class="form-control" type="text" id="focus" data-i18n-ph="focus_ph" maxlength="300">
+      </div>
     </div>
     <div class="grid" id="srcGrid"></div>
 
-    <div class="grid" style="margin-top:14px">
-      <div class="pcard">
-        <div class="ph"><label class="switch"><input type="checkbox" id="rssEnabled"><span></span></label><b>RSS / Atom</b><span class="price" data-i18n="free"></span></div>
+    <div class="grid">
+      <div class="pcard surface">
+        <div class="ph"><label class="switch"><input type="checkbox" id="rssEnabled" aria-label="RSS / Atom"><span></span></label><b>RSS / Atom</b><span class="price" data-i18n="free"></span></div>
         <div class="pt">
           <p class="note" style="margin-top:0" data-i18n="rss_desc"></p>
-          <label data-i18n="rss_feeds"></label><textarea id="rssFeeds"></textarea>
-          <label style="margin-top:12px" data-i18n="rss_keywords"></label><textarea id="rssKeywords" style="min-height:70px"></textarea>
+          <label class="form-label" for="rssFeeds" data-i18n="rss_feeds"></label><textarea class="form-control" id="rssFeeds"></textarea>
+          <label class="form-label" for="rssKeywords" style="margin-top:12px" data-i18n="rss_keywords"></label><textarea class="form-control" id="rssKeywords" style="min-height:70px"></textarea>
         </div>
       </div>
-      <div class="pcard">
+      <div class="pcard surface">
         <div class="ph"><b data-i18n="catalog_title"></b><span class="price" data-i18n="endpoints"></span></div>
         <div class="pt">
           <p class="note" style="margin-top:0" data-i18n="catalog_desc"></p>
-          <div class="tokenrow"><input type="text" id="catQ" data-i18n-ph="catalog_ph" style="font-family:var(--sans)"><button class="btn ghost" id="catBtn" data-i18n="search"></button></div>
+          <div class="tokenrow"><input class="form-control" type="text" id="catQ" data-i18n-ph="catalog_ph"><button type="button" class="btn button" id="catBtn" data-i18n="search"></button></div>
           <div id="catResults" class="catlist"></div>
         </div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:16px">
-      <h2 data-i18n="custom_title"></h2>
-      <p class="desc" data-i18n-html="custom_desc"></p>
-      <textarea id="customSources" style="min-height:300px"></textarea>
-      <div class="row"><button class="btn" id="saveCustom" data-i18n="save"></button><span class="msg" id="customMsg"></span></div>
+    <div class="card surface">
+      <div class="card-body">
+        <h2 data-i18n="custom_title"></h2>
+        <p class="desc" data-i18n-html="custom_desc"></p>
+        <textarea class="form-control" id="customSources" style="min-height:300px"></textarea>
+        <div class="action-row"><button type="button" class="btn button button--primary btn-primary" id="saveCustom" data-i18n="save"></button><span class="msg" id="customMsg" aria-live="polite"></span></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2 data-i18n="rules_title"></h2>
-      <p class="desc" data-i18n="rules_desc"></p>
-      <textarea id="rules" style="min-height:280px"></textarea>
-      <div class="row"><button class="btn" id="saveRules" data-i18n="save_rules"></button><button class="btn ghost" id="rescore" data-i18n="rescore"></button><span class="msg" id="rulesMsg"></span></div>
+    <div class="card surface">
+      <div class="card-body">
+        <h2 data-i18n="rules_title"></h2>
+        <p class="desc" data-i18n="rules_desc"></p>
+        <textarea class="form-control" id="rules" style="min-height:280px"></textarea>
+        <div class="action-row"><button type="button" class="btn button button--primary btn-primary" id="saveRules" data-i18n="save_rules"></button><button type="button" class="btn button" id="rescore" data-i18n="rescore"></button><span class="msg" id="rulesMsg" aria-live="polite"></span></div>
+      </div>
     </div>
+    <div class="action-row" style="margin-top:12px">
+      <button type="button" class="btn button btn-primary button--primary" id="saveSources" data-i18n="save_legacy"></button>
+      <span class="msg" id="legacyMsg" aria-live="polite"></span>
+    </div>
+    </div><!-- /listenersLegacy -->
   </section>
 
-  <!-- SETTINGS -->
   <section id="tab-settings" class="hidden">
-    <div class="hero"><div><span class="kicker" data-i18n="k_settings"></span><h1 data-i18n="h_settings"></h1>
-      <p data-i18n="settings_intro"></p></div></div>
-    <div class="card">
-      <a class="eyebrow eyebrow-link" href="https://treg.to" target="_blank" rel="noopener"><span data-i18n="eb_token"></span> ↗</a>
-      <h2 data-i18n="token_title"></h2>
-      <p class="desc" data-i18n-html="token_desc"></p>
-      <div class="tokenrow">
-        <input type="password" id="token" placeholder="trg_live_..." autocomplete="off">
-        <button class="btn" id="saveToken" data-i18n="save"></button>
-        <button class="btn ghost" id="testToken" data-i18n="verify"></button>
-        <a class="btn ghost" href="https://treg.to" target="_blank" rel="noopener" data-i18n="get_token"></a>
+    <div class="hero">
+      <div>
+        <span class="kicker" data-i18n="k_settings"></span>
+        <h1 data-i18n="h_settings"></h1>
+        <p class="muted" data-i18n="settings_intro"></p>
       </div>
-      <div class="state"><span class="dot" id="tokenDot"></span><span id="tokenState"></span><span class="msg" id="tokenMsg"></span></div>
     </div>
-    <div class="card">
-      <div class="eyebrow" data-i18n="eb_budget"></div>
-      <h2 data-i18n="budget_title"></h2>
-      <p class="desc" data-i18n-html="budget_desc"></p>
-      <div class="fields">
-        <div><label data-i18n="f_lookback"></label><input type="number" id="lookback" min="1" max="365"></div>
-        <div><label data-i18n="f_percall"></label><input type="number" id="perCall" step="0.01" min="0.001"></div>
-        <div><label data-i18n="f_perrun"></label><input type="number" id="perRun" step="0.1" min="0"></div>
-        <div><label data-i18n="f_schedule"></label><input type="number" id="schedule" step="1" min="0"></div>
-        <div><label data-i18n="f_minkeep"></label><input type="number" id="minKeep" min="0" max="100"></div>
+    <div class="card surface">
+      <div class="card-body">
+        <a class="eyebrow eyebrow-link" href="https://treg.to" target="_blank" rel="noopener"><span data-i18n="eb_token"></span> ↗</a>
+        <h2 data-i18n="token_title"></h2>
+        <p class="desc" data-i18n-html="token_desc"></p>
+        <div class="tokenrow">
+          <input class="form-control" type="password" id="token" placeholder="trg_live_..." autocomplete="off">
+          <button type="button" class="btn button button--primary btn-primary" id="saveToken" data-i18n="save"></button>
+          <button type="button" class="btn button" id="testToken" data-i18n="verify"></button>
+          <a class="btn button" href="https://treg.to" target="_blank" rel="noopener" data-i18n="get_token"></a>
+        </div>
+        <div class="state"><span class="dot" id="tokenDot"></span><span id="tokenState"></span><span class="msg" id="tokenMsg" aria-live="polite"></span></div>
       </div>
-      <div class="row"><button class="btn" id="saveSettings" data-i18n="save"></button><span class="msg" id="setMsg"></span></div>
+    </div>
+    <div class="card surface">
+      <div class="card-body">
+        <div class="eyebrow" data-i18n="eb_budget"></div>
+        <h2 data-i18n="budget_title"></h2>
+        <p class="desc" data-i18n-html="budget_desc"></p>
+        <div class="fields">
+          <div><label class="form-label" for="lookback" data-i18n="f_lookback"></label><input class="form-control" type="number" id="lookback" min="1" max="365"></div>
+          <div><label class="form-label" for="perCall" data-i18n="f_percall"></label><input class="form-control" type="number" id="perCall" step="0.01" min="0.001"></div>
+          <div><label class="form-label" for="perRun" data-i18n="f_perrun"></label><input class="form-control" type="number" id="perRun" step="0.1" min="0"></div>
+          <div><label class="form-label" for="schedule" data-i18n="f_schedule"></label><input class="form-control" type="number" id="schedule" step="1" min="0"></div>
+          <div><label class="form-label" for="minKeep" data-i18n="f_minkeep"></label><input class="form-control" type="number" id="minKeep" min="0" max="100"></div>
+        </div>
+        <div class="action-row"><button type="button" class="btn button button--primary btn-primary" id="saveSettings" data-i18n="save"></button><span class="msg" id="setMsg" aria-live="polite"></span></div>
+      </div>
     </div>
   </section>
 </main>
 
-<div class="modal hidden" id="noteModal" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
-  <div class="modal-box">
+<footer class="foot-bar">
+  <span class="credits">built by Manvendra Singh @ Shizzy</span>
+</footer>
+</div>
+</div>
+
+<div id="runToast" class="run-toast hidden" role="status" aria-live="polite"></div>
+
+<div class="lsl-dialog hidden" id="noteModal" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+  <div class="lsl-dialog-box surface">
     <h2 id="noteTitle" data-i18n="note_title"></h2>
     <p class="ctx" id="noteCtx"></p>
-    <textarea id="noteText"></textarea>
-    <div class="modal-foot"><span class="hint" data-i18n="note_hint"></span><span class="msg" id="noteMsg"></span>
-      <button class="btn ghost" id="noteCancel" data-i18n="note_cancel"></button><button class="btn" id="noteSave" data-i18n="note_save"></button></div>
+    <textarea class="form-control" id="noteText"></textarea>
+    <div class="lsl-dialog-foot"><span class="hint" data-i18n="note_hint"></span><span class="msg" id="noteMsg" aria-live="polite"></span>
+      <button type="button" class="btn button" id="noteCancel" data-i18n="note_cancel"></button><button type="button" class="btn button button--primary btn-primary" id="noteSave" data-i18n="note_save"></button></div>
   </div>
 </div>
 
-<footer class="foot-bar">
-  <span>Lead Signal Listener · <span data-i18n="oss"></span></span>
-  <span class="credits">
-    <a href="https://x.com/yangyi" target="_blank" rel="noopener">@yangyi</a>
-    <span class="sep">·</span>
-    <a href="https://newmax.ai" target="_blank" rel="noopener">built by newmax.ai</a>
-  </span>
-</footer>
-
 <script>
-const I18N = {
-  en: {
-    tab_leads: "Leads", tab_sources: "Listeners", tab_settings: "Settings",
+const STRINGS = {
+    tab_leads: "Leads", tab_signals: "Lead signals", tab_sources: "Listeners", tab_settings: "Settings",
+    k_signals: "Configurations", h_signals: "Lead signals", signals_intro: "Each signal is a named listener (keywords, platforms, scoring). Run them independently and review leads per signal.",
+    signal_new: "+ New signal", signal_name: "Signal name", signal_name_ph: "e.g. Software Development", signal_editing: "Editing signal",
+    signal_rename: "Rename", signal_run: "Run", signal_show_leads: "Show leads", signal_delete_leads: "Delete leads",
+    signal_delete: "Delete signal", signal_duplicate: "Duplicate", signal_enable: "Enabled", signal_leads_today: "Leads today",
+    signal_total: "Total leads", signal_last_run: "Last run", signal_status_running: "Running…", signal_spent: "Spent (30d)",
+    run_on_platform: name => `Running on ${name}`,
+    skip_platform: name => `Skipped ${name}`,
+    run_finished: n => `Listen finished · ${n} new leads`,
+    signal_confirm_delete_leads: "Delete all leads for this signal? This cannot be undone.",
+    signal_confirm_delete: "Delete this signal and ALL its leads and run history? Type the signal name to confirm.",
+    signal_created: "Signal created", signal_deleted: "Signal deleted", signal_leads_deleted: n => `Deleted ${n} leads`,
+    signal_panel_empty_title: "No leads to show",
+    signal_panel_empty_leads: "Run the listener or lower minimum score in Settings. The main Leads page filter may also hide low-score rows.",
+    signal_open_full_listeners: "Full listener editor (sidebar)",
+    signal_editor_reload: "Listener editor was reset — refresh the page, then open Listeners again.",
+    lb_signal: "Listener", all_signals: "All signals", scope_today: "Fetched today",
+    leads_for_signal: name => `Lead signal: ${name}`,
+    nav_menu: "Menu", detail_title: "Lead detail", detail_back: "← Back to leads", detail_empty: "Select a lead to preview score, text, and follow-up actions.", detail_not_found: "Lead not found.",
+    detail_open: "Open original post", detail_status_label: "Lead status",
+    detail_note_heading: "Notes", detail_note_empty: "No note yet. Use “Add note” above to track follow-ups.",
+    note_edit: "Edit note",
     intro_focus: f => `${f} Review and follow up by score.`,
     intro_auto: (src, kws, more) => `Listening on ${src} for ${kws}${more ? ` and ${more} more` : ""}. Review and follow up by score.`,
     intro_src_only: src => `Listening on ${src}. Review and follow up by score.`,
@@ -392,6 +325,32 @@ const I18N = {
     all: "All", st_new: "new · to review", st_qualified: "qualified", st_contacted: "contacted", st_replied: "replied", st_ignored: "ignored",
     search_ph: "Title / text / author, press Enter", refresh: "Refresh",
     sources_intro: "One keyword per line; each keyword makes one API call per run. Prices come from the Treg catalog — actual charges apply.",
+    simple_intro: "Describe who you want, list keywords to search for and to ignore, pick platforms, then Save and Run now.",
+    simple_prompt_title: "Who are you looking for?",
+    simple_prompt_hint: "A short prompt describing your ideal lead. Shown at the top of the Leads page.",
+    simple_prompt_ph: "e.g. Authors who want to self-publish their first book",
+    simple_include_label: "Keyword search for",
+    simple_include_hint: "One phrase per line (2–4 words work best). Used as search queries on every enabled platform below.",
+    simple_include_ph: "publish my book\nself publishing\nfirst time author",
+    simple_ignore_label: "Keyword ignore",
+    simple_ignore_hint: "One phrase per line. Posts matching these are penalized in scoring (spam, promos, job seekers…).",
+    simple_ignore_ph: "check out my book\ngiveaway\ncrypto",
+    simple_platforms_title: "Platforms",
+    simple_platforms_hint: "Checked sources run on the next listen pass. Hacker News and RSS use public feeds (no Treg). Other platforms need a Treg token unless free collectors are enabled for this signal.",
+    simple_platforms_hint_free: "Free collectors are on for this signal — checked platforms below use RSS, public search, or local scrapers (no per-call Treg charges for those).",
+    platform_src_hn: "HN Algolia search · no Treg",
+    platform_src_rss: "RSS/Atom feeds · no Treg",
+    platform_src_reddit_rss: "Subreddit .rss feeds · no Treg",
+    platform_src_twscrape: "Local X scrape (twscrape) · no Treg",
+    platform_src_linkedin_pw: "Playwright browser scrape · no Treg",
+    platform_src_funding_rss: "Startup/news RSS · no Treg",
+    platform_src_playwright: "Playwright scrape · no Treg",
+    platform_src_instaloader: "Instaloader · no Treg",
+    platform_needs_treg: "Requires Treg token (Settings)",
+    show_legacy: "Show advanced configuration (legacy)",
+    hide_legacy: "Hide advanced configuration",
+    save_legacy: "Save advanced sources only",
+    simple_need_keywords: "Add at least one keyword under “Keyword search for”.",
     save_config: "Save", rules_title: "Scoring rules",
     rules_desc: "JSON: pain / intent / negative map phrase → weight; persona maps segment → word list. Save, then rescore existing leads.",
     save_rules: "Save rules", rescore: "Rescore all leads",
@@ -413,8 +372,10 @@ const I18N = {
     count: (n, t) => `${n} of ${t} signals`, more: "Load more",
     lb_scope: "range", scope_all: "All leads", scope_last: "New in last run",
     lb_sort: "sort", sort_score: "Score", sort_recent: "Newest found",
-    s_last: "new last run", new_badge: "NEW", seen: x => `found ${x}`, expand: "Click to expand", note_ph: "Note", note_add: "+ Add note", note_title: "Note", note_save: "Save", note_cancel: "Cancel", note_hint: "Ctrl+Enter to save · Esc to close", b_all: "All", s_ignored: "Ignored",
+    s_last: "new last run", new_badge: "NEW", seen: x => `found ${x}`, expand: "Click to expand", expand_dblclick: "Double-click to expand snippet", note_ph: "Note", note_add: "+ Add note", note_title: "Note", note_save: "Save", note_cancel: "Cancel", note_hint: "Ctrl+Enter to save · Esc to close", b_all: "All", s_ignored: "Ignored",
     empty_t: "No signals yet", empty_d: "Add your Treg token in Settings, then click Run now.",
+    empty_d_listener: name => `No leads yet for “${name}”. Click Run now to fetch using this listener’s keywords and platforms.`,
+    run_for_listener: name => `Run now · ${name}`,
     s_new: "To review", s_total: "Total leads", s_qualified: "Qualified", s_contacted: "Contacted", s_replied: "Replied", s_spent: "Spent (30d)", s_calls: "Treg calls",
     running: "running…", next_run: "next run · ",
     rss_desc: "Free. Google Alerts, subreddit feeds (reddit.com/r/NAME/new/.rss), hnrss.org keyword feeds, blogs, job boards…",
@@ -430,69 +391,49 @@ const I18N = {
     lb_status: "status", lb_source: "source", lb_persona: "persona", lb_min: "min score", lb_search: "search",
     free: "free", per_call: "/ call", per_result: "per result", catalog_title: "Treg catalog", endpoints: "3,800+ endpoints",
     open: "open ↗", q_prefix: "q: ", ago_h: n => `${n}h ago`, ago_d: n => `${n}d ago`,
-  },
-  zh: {
-    tab_leads: "线索", tab_sources: "监听配置", tab_settings: "设置",
-    intro_focus: f => `${f}${/[A-Za-z0-9.,!?)"]$/.test(f) ? " " : ""}按分数逐条审核和跟进。`,
-    intro_auto: (src, kws, more) => `正在 ${src} 上监听${kws}${more ? `等 ${more + 3} 个关键词` : ""}，按分数逐条审核和跟进。`,
-    intro_src_only: src => `正在 ${src} 上监听，按分数逐条审核和跟进。`,
-    intro_none: "还没有启用任何数据源。去「监听配置」写下你要找的人，再添加关键词。",
-    list_and: "、", quote: k => `「${k}」`,
-    agent_title: "不会配置？让 Agent 帮你完成",
-    agent_desc: "复制提示词，发给 Claude Code、Codex、Cursor 或 NewMax，它会先了解你的需求，再帮你设置关键词和打分规则。",
-    agent_btn: "复制提示词",
-    agent_copied: "已复制，粘贴发给你的 Agent 即可",
-    agent_failed: "复制失败，提示词已选中，请按 Ctrl+C",
-    agent_prompt: (dir, url) => `阅读 https://github.com/yangyixxxx/lead-signal-listener 里的 AGENT_SETUP.md（本地副本：${dir}/AGENT_SETUP.md），帮我配置 Lead Signal Listener。\n\n项目已经安装在 ${dir}，服务正在 ${url} 运行，跳过安装步骤。先请求 GET ${url}/api/config，如果 token_source 是 "none"，先引导我获取并设置 Treg token。\n\n然后从第 3 步开始：了解我要找什么样的人，提出监听目标、关键词、每个关键词抓几页和打分规则，通过本地 API 写入配置，确认我的预算后跑第一轮，再和我一起调优结果。请用中文和我沟通。`,
-    focus_eb: "监听目标", focus_title: "你想找什么样的人？",
-    focus_hint: "用一句话描述你要找的人或公司，会显示在线索页顶部。留空则根据启用的数据源和关键词自动生成。",
-    focus_ph: "例如：自然流量因 AI 搜索下滑的 B2B SaaS 创始人",
-    export_csv: "导出 CSV", export_json: "导出 JSON", run_now: "立即运行", last_log: "最近一次运行日志 ▾", no_log: "尚未运行",
-    all: "全部", st_new: "new · 待处理", st_qualified: "qualified · 合格", st_contacted: "contacted · 已联系", st_replied: "replied · 已回复", st_ignored: "ignored · 忽略",
-    search_ph: "标题 / 正文 / 作者，回车搜索", refresh: "刷新",
-    sources_intro: "每行一个关键词，每个关键词每次运行调用一次接口。价格取自 Treg 目录，以实际扣费为准。",
-    save_config: "保存配置", rules_title: "打分规则",
-    rules_desc: "JSON 格式：pain / intent / negative 是「短语 → 权重」，persona 是「人群 → 词表」。保存后可以对已有线索重新打分。",
-    save_rules: "保存规则", rescore: "重新打分全部线索",
-    settings_intro: "一个 Treg token 就能调用 Reddit、X、LinkedIn 等数据源，不需要分别注册各平台的接口。",
-    token_title: "录入 Token",
-    token_desc: '在 <a href="https://treg.to" target="_blank" rel="noopener">treg.to</a> 获取。Token 只保存在本机 <code>data/config.json</code>；也可以用环境变量 <code>TREG_TOKEN</code> 提供（优先级更高，不写入磁盘）。团队 token 会自动带上 <code>X-Treg-Org</code>。Hacker News 免费，不需要 token。',
-    save: "保存", verify: "校验", get_token: "去 treg.to 获取 Token ↗", budget_title: "运行与预算",
-    budget_desc: "花费以 Treg 返回的 <code>X-Treg-Cost-Micro</code> 为准；同一关键词一小时内重复运行会走幂等重放，不重复计费。",
-    f_lookback: "回看天数", f_percall: "单次调用上限 (USD)", f_perrun: "单次运行预算 (USD)", f_schedule: "自动运行间隔 (小时，0 = 关闭)", f_minkeep: "低于此分不入库",
-    tok_env: "使用环境变量 TREG_TOKEN", tok_file: "已保存 · ", tok_none: "未设置 · 只运行免费的 HN",
-    kicker: (n, d) => `${n} 个数据源启用 · 回看 ${d} 天`,
-    keywords: "关键词", pages_label: "每个关键词抓几页（每页一次付费调用）", location: "地区", region: "地区", funding_note: "抓取美国 / 欧洲新闻里的融资事件，不需要关键词。",
-    src_linkedin_posts: "LinkedIn 帖子",
-    src_facebook_posts: "Facebook 帖子", src_facebook_groups: "Facebook 群组",
-    src_instagram_hashtags: "Instagram 话题标签", src_instagram_reels: "Instagram Reels",
-    lbl_group_urls: "公开群组链接 · 每行一个", lbl_hashtags: "话题标签（不带 #）· 每行一个", src_linkedin_jobs: "LinkedIn 招聘信号", src_funding: "融资信号",
-    saved: "已保存", enter_token: "请输入 token", verifying: "校验中…", rules_saved: "规则已保存",
-    json_err: "JSON 格式错误：", rescored: n => `已重新打分 ${n} 条`,
-    count: (n, t) => `显示 ${n} / 共 ${t} 条`, more: "加载更多",
-    lb_scope: "范围", scope_all: "全部线索", scope_last: "只看本次新增",
-    lb_sort: "排序", sort_score: "按分数", sort_recent: "最新入库",
-    s_last: "本次新增", new_badge: "新", seen: x => `入库 ${x}`, expand: "点击展开", note_ph: "备注", note_add: "+ 添加备注", note_title: "备注", note_save: "保存", note_cancel: "取消", note_hint: "Ctrl+Enter 保存 · Esc 关闭", b_all: "全部", s_ignored: "已忽略",
-    empty_t: "暂无线索", empty_d: "先在「设置」里录入 Treg token，再点「立即运行」。",
-    s_new: "待处理", s_total: "线索总数", s_qualified: "合格", s_contacted: "已联系", s_replied: "已回复", s_spent: "近 30 天花费", s_calls: "Treg 调用",
-    running: "运行中…", next_run: "下次运行 · ",
-    rss_desc: "免费。可接 Google Alerts、subreddit 订阅（reddit.com/r/名称/new/.rss）、hnrss.org 关键词订阅、博客、招聘板等。",
-    rss_feeds: "订阅地址 · 每行一个", rss_keywords: "关键词过滤 · 可选，命中任意一个即保留",
-    catalog_desc: "在 Treg 目录里搜索任意监听端点（YouTube、TikTok、Google 新闻、评论等），点击结果即可添加为自定义数据源。",
-    catalog_ph: "例如 youtube search videos", search: "搜索", searching: "搜索中…", no_results: "没有结果",
-    custom_title: "自定义数据源",
-    custom_desc: '把任意 Treg 端点变成监听源。<code>params</code> 在 GET 时作为查询参数、POST 时作为 JSON 请求体；<code>{q}</code> 会替换为每个关键词，<code>{days}</code> 替换为回看天数。可选：<code>fields</code> 把线索字段映射到返回数据路径（<code>a.b|c</code> 表示依次尝试），<code>items_path</code>，<code>url_template</code>（如 <code>https://www.youtube.com/watch?v={id}</code>），<code>kind</code>（pain / hiring / funding / mention / other）。',
-    added: "已添加，确认后点保存", oss: "开源 · MIT 许可",
-    h_leads: "痛点信号", h_sources: "监听配置", h_settings: "设置",
-    k_sources: "数据源 · 关键词 · 规则", k_settings: "一个 key · 3800+ 端点",
-    eb_token: "treg api token", eb_budget: "预算 · 定时",
-    lb_status: "状态", lb_source: "来源", lb_persona: "人群", lb_min: "最低分", lb_search: "搜索",
-    free: "免费", per_call: "/ 次", per_result: "按条计费", catalog_title: "Treg 目录", endpoints: "3800+ 端点",
-    open: "打开原文 ↗", q_prefix: "关键词：", ago_h: n => `${n} 小时前`, ago_d: n => `${n} 天前`,
-  },
 };
-let LANG = localStorage.getItem("sl_lang") || "en";
-const T = (k, ...a) => { const v = (I18N[LANG] || I18N.en)[k] ?? I18N.en[k] ?? k; return typeof v === "function" ? v(...a) : v; };
+const T = (k, ...a) => { const v = STRINGS[k] ?? k; return typeof v === "function" ? v(...a) : v; };
+
+const SIMPLE_PLATFORM_KEYS = [
+  "hn", "reddit", "x", "linkedin_posts", "linkedin_jobs", "funding",
+  "facebook_posts", "facebook_groups", "instagram_hashtags", "instagram_reels", "rss",
+];
+const QUERY_PLATFORM_KEYS = new Set([
+  "hn", "reddit", "x", "linkedin_posts", "linkedin_jobs",
+  "facebook_posts", "facebook_groups", "instagram_hashtags", "instagram_reels",
+]);
+
+function platformChipSubtitle(key, EC) {
+  const fcfg = (EC && EC.free_collectors) || {};
+  const replaceTreg = fcfg.enabled && fcfg.replace_treg !== false;
+  const hasToken = CONFIG && CONFIG.token_source !== "none";
+
+  if (key === "hn") {
+    return {text: T("platform_src_hn"), kind: "free"};
+  }
+  if (key === "rss") {
+    return {text: T("platform_src_rss"), kind: "free"};
+  }
+
+  if (replaceTreg) {
+    const freeByKey = {
+      reddit: fcfg.reddit_rss?.enabled && T("platform_src_reddit_rss"),
+      x: fcfg.twitter?.enabled && T("platform_src_twscrape"),
+      linkedin_posts: fcfg.linkedin_posts?.enabled && T("platform_src_linkedin_pw"),
+      linkedin_jobs: fcfg.linkedin_jobs?.enabled && T("platform_src_linkedin_pw"),
+      funding: fcfg.funding_rss?.enabled && T("platform_src_funding_rss"),
+      facebook_posts: fcfg.facebook_pages?.enabled && T("platform_src_playwright"),
+      facebook_groups: fcfg.facebook_groups?.enabled && T("platform_src_playwright"),
+      instagram_hashtags: fcfg.instagram?.enabled && T("platform_src_instaloader"),
+      instagram_reels: fcfg.instagram?.enabled && T("platform_src_instaloader"),
+    };
+    if (freeByKey[key]) return {text: freeByKey[key], kind: "free"};
+  }
+
+  if (!hasToken) return {text: T("platform_needs_treg"), kind: "off"};
+  const meta = SRC_META[key];
+  return {text: meta ? meta.cost() : "", kind: "paid"};
+}
 
 const SRC_META = {
   hn: {name: () => "Hacker News", cost: () => T("free") + " · algolia"},
@@ -512,11 +453,10 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const safeUrl = u => /^https?:\/\//i.test(u || "") ? esc(u) : "#";
 
 function applyI18n() {
-  document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+  document.documentElement.lang = "en";
   document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = T(el.dataset.i18n));
   document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = T(el.dataset.i18nHtml));  // trusted static strings only
   document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = T(el.dataset.i18nPh));
-  document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === LANG));
 }
 
 async function api(path, opts = {}) {
@@ -529,32 +469,27 @@ function flash(el, text, ok = true) { el.textContent = text; el.className = "msg
 
 document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  ["leads", "sources", "settings"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  ["leads", "lead-signals", "sources", "settings"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  if (b.dataset.tab === "lead-signals") loadLeadSignals().then(renderSignalList);
+  if (b.dataset.tab === "leads") refreshLeadsListenerContext();
+  if (b.dataset.tab === "sources") ensureListenersEditorHome();
+  if (b.dataset.tab !== "lead-signals") SIGNAL_CARD_PANEL = null;
+  if (b.dataset.tab !== "leads") closeLeadDetail();
+  if (window.innerWidth < 960) $("appShell").classList.remove("sidebar-open");
 });
-document.querySelectorAll(".lang button").forEach(b => b.onclick = async () => {
-  if (b.dataset.lang === LANG) return;
-  LANG = b.dataset.lang;
-  localStorage.setItem("sl_lang", LANG);
-  applyI18n();
-  // Re-render everything from cache first, so the page switches fully even if the server is unreachable.
-  renderConfig(); renderRows(); renderStatus(); renderBoard();
-  // Server-side run logs and messages follow the UI language.
-  await api("/api/config", {method: "POST", body: JSON.stringify({lang: LANG})}).catch(() => {});
-  loadConfig().catch(() => {}); loadSignals().catch(() => {}); loadStatus().catch(() => {});
-});
-
 // Listeners that will actually run: free ones always, paid ones only with a token.
 function activeListeners() {
+  const EC = effectiveListenerConfig();
   const hasToken = CONFIG.token_source !== "none";
   const names = [], keywords = [];
-  for (const [key, s] of Object.entries(CONFIG.sources || {})) {
+  for (const [key, s] of Object.entries(EC.sources || {})) {
     if (!s.enabled || (key !== "hn" && !hasToken)) continue;
     names.push(SRC_META[key] ? SRC_META[key].name() : key);
     keywords.push(...(s.queries || []));
   }
-  const rss = CONFIG.rss || {};
+  const rss = EC.rss || {};
   if (rss.enabled && (rss.feeds || []).length) { names.push("RSS"); keywords.push(...(rss.keywords || [])); }
-  for (const c of CONFIG.custom_sources || []) {
+  for (const c of EC.custom_sources || []) {
     if (!c.enabled || !hasToken) continue;
     names.push(c.name || c.endpoint);
     keywords.push(...(c.queries || []).filter(Boolean));
@@ -563,58 +498,555 @@ function activeListeners() {
 }
 function joinList(items) {
   if (items.length <= 1) return items.join("");
-  return LANG === "zh" ? items.join("、") : items.slice(0, -1).join(", ") + T("list_and") + items[items.length - 1];
+  return items.slice(0, -1).join(", ") + T("list_and") + items[items.length - 1];
 }
 function renderIntro(active) {
-  const focus = (CONFIG.focus || "").trim();
+  const focus = (effectiveListenerConfig().focus || "").trim();
   let text;
-  if (focus) text = T("intro_focus", /[.!?。！？]$/.test(focus) ? focus : focus + (LANG === "zh" ? "。" : "."));
+  if (focus) text = T("intro_focus", /[.!?]$/.test(focus) ? focus : focus + ".");
   else if (!active.names.length) text = T("intro_none");
   else {
     const shown = active.keywords.slice(0, 3).map(k => T("quote", k));
     const more = Math.max(0, active.keywords.length - 3);
     // zh: 「a」「b」「c」; en: “a”, “b”, “c” and N more  /  “a” and “b”
-    const kws = LANG === "zh" ? shown.join("") : (more ? shown.join(", ") : joinList(shown));
+    const kws = more ? shown.join(", ") : joinList(shown);
     text = shown.length ? T("intro_auto", joinList(active.names), kws, more) : T("intro_src_only", joinList(active.names));
   }
   $("leadsIntro").textContent = text;
 }
 
+let LEAD_SIGNALS = [], ACTIVE_SIGNAL = null;
+let SIGNAL_CARD_PANEL = null;
+let SIGNAL_PANEL_ROWS = [];
+/** Kept when the list re-render drops the id from the document tree (orphan node still appendable). */
+let listenersEditorRootEl = null;
+
+function getListenersEditorRoot() {
+  if (listenersEditorRootEl && listenersEditorRootEl.nodeType === 1) return listenersEditorRootEl;
+  listenersEditorRootEl = document.getElementById("listenersEditorRoot");
+  return listenersEditorRootEl;
+}
+
+function tzOffsetMinutes() { return -new Date().getTimezoneOffset(); }
+
+async function loadLeadSignals() {
+  LEAD_SIGNALS = await api("/api/lead-signals?tz_offset=" + tzOffsetMinutes());
+  const aid = CONFIG && CONFIG.active_lead_signal_id;
+  ACTIVE_SIGNAL = LEAD_SIGNALS.find(s => s.id === aid) || LEAD_SIGNALS[0] || null;
+  return LEAD_SIGNALS;
+}
+
+function listenerById(id) {
+  return LEAD_SIGNALS.find(s => +s.id === +id);
+}
+
+/** Listener selected on the Leads page (sidebar Run / export / stats use this). */
+function leadsListenerId() {
+  const v = $("fSignal") && $("fSignal").value;
+  if (v) return +v;
+  if (CONFIG && CONFIG.active_lead_signal_id) return +CONFIG.active_lead_signal_id;
+  return ACTIVE_SIGNAL ? +ACTIVE_SIGNAL.id : null;
+}
+
+function leadsListenerRow() {
+  const id = leadsListenerId();
+  return id ? listenerById(id) : null;
+}
+
+function configForListener(sig) {
+  if (!CONFIG) return {};
+  if (!sig || !sig.config) return CONFIG;
+  const c = JSON.parse(JSON.stringify(CONFIG));
+  const p = sig.config;
+  for (const k of ["focus", "sources", "rss", "rules", "listener_simple", "free_collectors", "custom_sources",
+    "lookback_days", "max_cost_per_run_usd", "min_score_to_keep", "schedule_hours"]) {
+    if (p[k] !== undefined) c[k] = JSON.parse(JSON.stringify(p[k]));
+  }
+  return c;
+}
+
+function effectiveListenerConfig() {
+  const onLeads = $("tab-leads") && !$("tab-leads").classList.contains("hidden");
+  const sig = onLeads ? leadsListenerRow() : ACTIVE_SIGNAL;
+  return configForListener(sig || ACTIVE_SIGNAL);
+}
+
+async function setActiveSignal(id) {
+  id = +id;
+  await api("/api/lead-signals/" + id, {method: "PATCH", body: JSON.stringify({set_active: true})});
+  CONFIG.active_lead_signal_id = id;
+  ACTIVE_SIGNAL = LEAD_SIGNALS.find(s => s.id === id) || null;
+}
+
 async function loadConfig() {
   CONFIG = await api("/api/config");
+  await loadLeadSignals();
   renderConfig();
+  renderSignalFilter();
+  syncLeadsPageActions();
+  updateLeadsCrumb();
 }
+function linesFrom(id) {
+  return $(id).value.split("\n").map(x => x.trim()).filter(Boolean);
+}
+function deriveSimpleFromConfig() {
+  const EC = effectiveListenerConfig();
+  const src = EC.sources || {};
+  const queries = [];
+  for (const key of QUERY_PLATFORM_KEYS) {
+    if (src[key]?.enabled) queries.push(...(src[key].queries || []));
+  }
+  const ignore = Object.keys((EC.rules || {}).negative || {});
+  const platforms = {};
+  for (const key of SIMPLE_PLATFORM_KEYS) {
+    if (key === "rss") platforms.rss = !!(EC.rss || {}).enabled;
+    else platforms[key] = !!src[key]?.enabled;
+  }
+  return {
+    prompt: EC.focus || "",
+    keywords_include: [...new Set(queries)].join("\n"),
+    keywords_ignore: ignore.join("\n"),
+    platforms,
+  };
+}
+function renderSimpleConfig() {
+  const EC = effectiveListenerConfig();
+  const simple = EC.listener_simple || deriveSimpleFromConfig();
+  $("simplePrompt").value = simple.prompt || EC.focus || "";
+  $("simpleInclude").value = simple.keywords_include || "";
+  $("simpleIgnore").value = simple.keywords_ignore || "";
+  const plat = simple.platforms || {};
+  const grid = $("simplePlatforms");
+  const hintEl = $("simplePlatformsHint");
+  if (hintEl) {
+    hintEl.textContent = (EC.free_collectors || {}).enabled ? T("simple_platforms_hint_free") : T("simple_platforms_hint");
+  }
+  grid.innerHTML = SIMPLE_PLATFORM_KEYS.map(key => {
+    const label = key === "rss" ? "RSS / Atom" : (SRC_META[key] ? SRC_META[key].name() : key);
+    const sub = platformChipSubtitle(key, EC);
+    const subCls = sub.kind === "paid" ? "platform-sub-paid" : sub.kind === "off" ? "platform-sub-off" : "platform-sub-free";
+    const on = plat[key] ?? (key === "rss" ? !!(EC.rss || {}).enabled : !!(EC.sources || {})[key]?.enabled);
+    return `<label class="platform-chip"><input type="checkbox" data-simple-platform="${key}" ${on ? "checked" : ""} aria-label="${esc(label)}"><span class="platform-chip-text"><b>${esc(label)}</b><small class="${subCls}">${esc(sub.text)}</small></span></label>`;
+  }).join("");
+}
+function buildPayloadFromSimple() {
+  const base = effectiveListenerConfig();
+  const prompt = $("simplePrompt").value.trim();
+  const include = linesFrom("simpleInclude");
+  const ignore = linesFrom("simpleIgnore");
+  const platforms = {};
+  document.querySelectorAll("[data-simple-platform]").forEach(cb => { platforms[cb.dataset.simplePlatform] = cb.checked; });
+
+  const sources = JSON.parse(JSON.stringify(base.sources || {}));
+  for (const key of Object.keys(SRC_META)) {
+    const prev = sources[key] || {};
+    const on = !!platforms[key];
+    sources[key] = {...prev, enabled: on};
+    if (on && QUERY_PLATFORM_KEYS.has(key) && key !== "funding") {
+      sources[key].queries = include.slice();
+    }
+    if (key === "linkedin_jobs" && on && include.length) sources[key].queries = include.slice();
+  }
+  if (platforms.funding) {
+    sources.funding = {...(sources.funding || {}), enabled: true};
+  } else if (sources.funding) {
+    sources.funding.enabled = false;
+  }
+
+  const rssPrev = base.rss || {};
+  const rss = {
+    ...rssPrev,
+    enabled: !!platforms.rss,
+    keywords: include.length ? include : (rssPrev.keywords || []),
+  };
+  if (platforms.rss && include.length && !(rssPrev.feeds || []).length) {
+    const q = encodeURIComponent(include[0]);
+    rss.feeds = [`https://hnrss.org/newest?q=${q}`];
+  }
+
+  const rules = JSON.parse(JSON.stringify(base.rules || {}));
+  rules.pain = rules.pain || {};
+  rules.intent = rules.intent || {};
+  rules.negative = rules.negative || {};
+  for (const line of include) {
+    const k = line.toLowerCase();
+    if (k && rules.pain[k] == null) rules.pain[k] = 8;
+  }
+  for (const line of ignore) {
+    const k = line.toLowerCase();
+    if (k) rules.negative[k] = rules.negative[k] ?? -10;
+  }
+
+  const listener_simple = {
+    prompt,
+    keywords_include: include.join("\n"),
+    keywords_ignore: ignore.join("\n"),
+    platforms,
+  };
+  return {focus: prompt, sources, rss, rules, listener_simple};
+}
+
+function renderSignalFilter() {
+  if (!$("fSignal")) return;
+  const cur = $("fSignal").value || String(CONFIG && CONFIG.active_lead_signal_id || LEAD_SIGNALS[0]?.id || "");
+  $("fSignal").innerHTML = LEAD_SIGNALS.map(s =>
+    `<option value="${s.id}" ${String(s.id) === String(cur) ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+  if (!$("fSignal").value && LEAD_SIGNALS[0]) $("fSignal").value = String(LEAD_SIGNALS[0].id);
+}
+
+function updateLeadsCrumb() {
+  const el = $("leadsSignalCrumb");
+  if (!el) return;
+  const row = leadsListenerRow();
+  if (row) { el.textContent = T("leads_for_signal", row.name); el.classList.remove("hidden"); }
+  else el.classList.add("hidden");
+}
+
+function syncLeadsPageActions() {
+  const row = leadsListenerRow();
+  const lid = leadsListenerId();
+  const qs = filterQS();
+  if ($("leadsExportCsv")) $("leadsExportCsv").href = lid ? "/api/export?fmt=csv&" + qs : "#";
+  if ($("leadsExportJson")) $("leadsExportJson").href = lid ? "/api/export?fmt=json&" + qs : "#";
+  const runBtn = $("leadsRunBtn");
+  if (runBtn) {
+    const runLabel = runBtn.querySelector("span");
+    if (runLabel && row) runLabel.textContent = T("run_for_listener", row.name);
+    else if (runLabel) runLabel.textContent = T("run_now");
+    runBtn.disabled = !lid || (STATUS && STATUS.running);
+  }
+}
+
+function refreshLeadsListenerContext() {
+  updateLeadsCrumb();
+  syncLeadsPageActions();
+  const active = activeListeners();
+  renderIntro(active);
+  loadStatus();
+  loadSignals();
+}
+
+function renderSignalEditorBar() {
+  const sel = $("editSignalSelect");
+  if (!sel) return;
+  const aid = CONFIG && CONFIG.active_lead_signal_id;
+  sel.innerHTML = LEAD_SIGNALS.map(s =>
+    `<option value="${s.id}" ${s.id === aid ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+  $("editSignalName").value = ACTIVE_SIGNAL ? ACTIVE_SIGNAL.name : "";
+}
+
+function formatRunTime(ts) {
+  if (!ts) return "—";
+  return new Date(ts * 1000).toLocaleString("en-US");
+}
+
+function ensureListenersEditorHome() {
+  const home = $("listenersEditorHome");
+  const root = getListenersEditorRoot();
+  if (!home || !root) return;
+  if (root.parentElement !== home) {
+    try {
+      home.appendChild(root);
+    } catch (e) {
+      console.error("ensureListenersEditorHome", e);
+    }
+  }
+}
+
+function mountListenersEditor(mount) {
+  if (!mount) return;
+  ensureListenersEditorHome();
+  const root = getListenersEditorRoot();
+  if (!root) {
+    mount.innerHTML = `<div class="empty"><b>${T("signal_editor_reload")}</b></div>`;
+    return;
+  }
+  mount.replaceChildren();
+  const toolbar = document.createElement("div");
+  toolbar.className = "signal-card-panel-toolbar";
+  toolbar.innerHTML = `<button type="button" class="btn button" data-signal-full-listeners>${T("signal_open_full_listeners")}</button><span class="msg" data-signal-panel-msg aria-live="polite"></span><button type="button" class="btn button button--primary btn-primary" data-signal-panel-save>${T("save_config")}</button>`;
+  mount.appendChild(toolbar);
+  toolbar.querySelector("[data-signal-panel-save]").onclick = () => $("saveSimple")?.click();
+  toolbar.querySelector("[data-signal-full-listeners]").onclick = () => {
+    ensureListenersEditorHome();
+    document.querySelector('.seg button[data-tab="sources"]').click();
+  };
+  try {
+    mount.appendChild(root);
+  } catch (e) {
+    console.error("mountListenersEditor", e);
+    mount.innerHTML = `<div class="empty"><b>${T("signal_editor_reload")}</b></div>`;
+  }
+}
+
+function setSignalCardPanel(id, tab) {
+  if (SIGNAL_CARD_PANEL && SIGNAL_CARD_PANEL.id === id && SIGNAL_CARD_PANEL.tab === tab) {
+    SIGNAL_CARD_PANEL = null;
+    ensureListenersEditorHome();
+  } else {
+    SIGNAL_CARD_PANEL = {id, tab};
+  }
+  renderSignalList();
+}
+
+function signalMinScore(id) {
+  const s = LEAD_SIGNALS.find(x => x.id === id);
+  const cfg = (s && s.config) || {};
+  const v = cfg.min_score_to_keep;
+  if (v != null && v !== "") return Math.max(0, parseInt(v, 10) || 0);
+  if (CONFIG && CONFIG.min_score_to_keep != null) return Math.max(0, parseInt(CONFIG.min_score_to_keep, 10) || 0);
+  return 0;
+}
+
+async function loadSignalCardLeads(id) {
+  const card = document.querySelector(`.signal-card[data-id="${id}"]`);
+  const mount = card && card.querySelector(`[data-signal-panel-leads="${id}"]`);
+  if (!mount) return;
+  mount.innerHTML = `<p class="muted">${T("refresh")}…</p>`;
+  const p = new URLSearchParams({lead_signal_id: String(id), limit: "50", sort: "score"});
+  const min = signalMinScore(id);
+  if (min > 0) p.set("min_score", String(min));
+  try {
+    const res = await fetch("/api/signals?" + p.toString());
+    const rows = await res.json().catch(() => []);
+    SIGNAL_PANEL_ROWS = rows;
+    mount.innerHTML = rows.length
+      ? `<div class="signal-panel-rows">${rows.map(rowHtml).join("")}</div>`
+      : `<div class="empty"><b>${T("signal_panel_empty_title")}</b>${T("signal_panel_empty_leads")}</div>`;
+    bindRows();
+  } catch (e) {
+    mount.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+}
+
+function syncSignalCardPanel() {
+  if (!SIGNAL_CARD_PANEL) {
+    ensureListenersEditorHome();
+    return;
+  }
+  const {id, tab} = SIGNAL_CARD_PANEL;
+  const card = document.querySelector(`.signal-card[data-id="${id}"]`);
+  if (!card) return;
+  const mount = card.querySelector(".signal-card-panel-mount");
+  if (!mount) return;
+  if (tab === "leads") {
+    ensureListenersEditorHome();
+    loadSignalCardLeads(id);
+  } else if (tab === "listeners") {
+    mountListenersEditor(mount);
+    setActiveSignal(id)
+      .then(() => loadConfig())
+      .catch(e => console.error("listeners panel", e));
+  }
+}
+
+function renderSignalList() {
+  const box = $("signalList");
+  if (!box) return;
+  ensureListenersEditorHome();
+  if (!LEAD_SIGNALS.length) {
+    box.innerHTML = `<div class="empty"><b>${T("signal_new")}</b></div>`;
+    SIGNAL_CARD_PANEL = null;
+    ensureListenersEditorHome();
+    return;
+  }
+  box.innerHTML = LEAD_SIGNALS.map(s => {
+    const st = s.stats || {};
+    const run = st.last_run;
+    const runLabel = st.running ? T("signal_status_running") :
+      (run && run.finished ? formatRunTime(run.finished) : "—");
+    const statusCls = st.running ? "signal-card--run" : (run && run.status === "failed" ? "signal-card--err" : "");
+    const panelOpen = SIGNAL_CARD_PANEL && SIGNAL_CARD_PANEL.id === s.id;
+    const tabLeads = panelOpen && SIGNAL_CARD_PANEL.tab === "leads";
+    const tabListeners = panelOpen && SIGNAL_CARD_PANEL.tab === "listeners";
+    const showPanel = tabLeads || tabListeners;
+    const tab = (name, key, extra = "", disabled = false) => {
+      const on = (key === "leads" && tabLeads) || (key === "listeners" && tabListeners);
+      const dis = disabled ? " disabled" : "";
+      return `<button type="button" class="signal-card-tab${extra}" role="tab" data-signal-tab="${key}" data-signal-id="${s.id}" aria-selected="${on ? "true" : "false"}"${dis}>${name}</button>`;
+    };
+    return `<article class="signal-card surface ${statusCls}" data-id="${s.id}">
+      <div class="signal-card-head">
+        <h3>${esc(s.name)}</h3>
+        <label class="switch signal-enable" title="${T("signal_enable")}">
+          <input type="checkbox" data-signal-enabled="${s.id}" ${s.enabled ? "checked" : ""}><span></span>
+        </label>
+      </div>
+      <div class="signal-card-stats-row">
+        <div class="signal-card-stats">
+          <div><b>${st.leads_today ?? 0}</b><span>${T("signal_leads_today")}</span></div>
+          <div><b>${st.total_leads ?? 0}</b><span>${T("signal_total")}</span></div>
+          <div><b>${runLabel}</b><span>${T("signal_last_run")}</span></div>
+          <div><b>$${(st.spent_30d_usd ?? 0).toFixed(2)}</b><span>${T("signal_spent")}</span></div>
+        </div>
+        <button type="button" class="signal-card-run btn button button--primary btn-primary${st.running ? " signal-card-run--busy" : ""}" data-signal-run="${s.id}" ${st.running ? "disabled" : ""}>${st.running ? T("signal_status_running") : T("signal_run")}</button>
+      </div>
+      <div class="signal-card-tabbar" role="tablist" aria-label="${esc(s.name)}">
+        ${tab(T("signal_show_leads"), "leads")}
+        ${tab(T("tab_sources"), "listeners")}
+        ${tab(T("signal_duplicate"), "duplicate")}
+        <a class="signal-card-tab signal-card-tab--link" href="/api/export?fmt=csv&lead_signal_id=${s.id}">${T("export_csv")}</a>
+        <a class="signal-card-tab signal-card-tab--link" href="/api/export?fmt=json&lead_signal_id=${s.id}">${T("export_json")}</a>
+        ${tab(T("signal_delete_leads"), "delete-leads", " signal-card-tab--danger")}
+        ${tab(T("signal_delete"), "delete", " signal-card-tab--danger")}
+      </div>
+      <div class="signal-card-panel ${showPanel ? "" : "hidden"}">
+        <div class="signal-card-panel-mount"${tabLeads ? ` data-signal-panel-leads="${s.id}"` : ""}></div>
+      </div>
+    </article>`;
+  }).join("");
+  box.querySelectorAll("[data-signal-run]").forEach(b => b.onclick = () => runSignal(+b.dataset.signalRun));
+  box.querySelectorAll("[data-signal-tab]").forEach(b => b.onclick = () => {
+    const id = +b.dataset.signalId;
+    const key = b.dataset.signalTab;
+    if (key === "duplicate") return void duplicateSignal(id);
+    if (key === "delete-leads") return void deleteSignalLeads(id);
+    if (key === "delete") return void deleteSignal(id);
+    setSignalCardPanel(id, key);
+  });
+  box.querySelectorAll("[data-signal-enabled]").forEach(cb => cb.onchange = () => toggleSignalEnabled(+cb.dataset.signalEnabled, cb.checked));
+  syncSignalCardPanel();
+}
+
+async function runSignal(id) {
+  try {
+    await api("/api/lead-signals/" + id + "/run", {method: "POST", body: "{}"});
+    loadStatus();
+    await loadLeadSignals();
+    if (SIGNAL_CARD_PANEL && SIGNAL_CARD_PANEL.id === id && SIGNAL_CARD_PANEL.tab === "leads") {
+      updateSignalCardStats(id);
+      loadSignalCardLeads(id);
+    } else if (!SIGNAL_CARD_PANEL) renderSignalList();
+    else updateSignalCardStats(id);
+  } catch (e) { alert(e.message); }
+}
+
+function updateSignalCardStats(id) {
+  const s = LEAD_SIGNALS.find(x => x.id === id);
+  const card = document.querySelector(`.signal-card[data-id="${id}"]`);
+  if (!s || !card) return;
+  const st = s.stats || {};
+  const run = st.last_run;
+  const runLabel = st.running ? T("signal_status_running") :
+    (run && run.finished ? formatRunTime(run.finished) : "—");
+  const stats = card.querySelectorAll(".signal-card-stats b");
+  if (stats.length >= 4) {
+    stats[0].textContent = st.leads_today ?? 0;
+    stats[1].textContent = st.total_leads ?? 0;
+    stats[2].textContent = runLabel;
+    stats[3].textContent = "$" + (st.spent_30d_usd ?? 0).toFixed(2);
+  }
+  const runBtn = card.querySelector("[data-signal-run]");
+  if (runBtn) {
+    runBtn.disabled = !!st.running;
+    runBtn.classList.toggle("signal-card-run--busy", !!st.running);
+    runBtn.textContent = st.running ? T("signal_status_running") : T("signal_run");
+  }
+}
+
+function showLeadsForSignal(id) {
+  document.querySelector('.seg button[data-tab="lead-signals"]').click();
+  SIGNAL_CARD_PANEL = {id, tab: "leads"};
+  $("fSignal").value = String(id);
+  renderSignalList();
+}
+
+async function openSignalEditor(id) {
+  document.querySelector('.seg button[data-tab="lead-signals"]').click();
+  SIGNAL_CARD_PANEL = {id, tab: "listeners"};
+  await loadLeadSignals();
+  renderSignalList();
+}
+
+async function duplicateSignal(id) {
+  try {
+    await api("/api/lead-signals/" + id + "/duplicate", {method: "POST", body: "{}"});
+    await loadLeadSignals();
+    renderSignalList();
+    renderSignalFilter();
+  } catch (e) { alert(e.message); }
+}
+
+async function deleteSignalLeads(id) {
+  const s = LEAD_SIGNALS.find(x => x.id === id);
+  if (!confirm(T("signal_confirm_delete_leads") + (s ? ` (${s.name})` : ""))) return;
+  try {
+    const r = await api("/api/lead-signals/" + id + "/leads", {method: "DELETE"});
+    flash($("signalList"), T("signal_leads_deleted", r.deleted), true);
+    await loadLeadSignals();
+    renderSignalList();
+    loadSignals();
+  } catch (e) { alert(e.message); }
+}
+
+async function deleteSignal(id) {
+  const s = LEAD_SIGNALS.find(x => x.id === id);
+  if (!confirm(T("signal_confirm_delete") + (s ? ` (${s.name})` : ""))) return;
+  try {
+    await api("/api/lead-signals/" + id, {method: "DELETE"});
+    await loadConfig();
+    renderSignalList();
+    loadSignals();
+  } catch (e) { alert(e.message); }
+}
+
+async function toggleSignalEnabled(id, on) {
+  try {
+    await api("/api/lead-signals/" + id, {method: "PATCH", body: JSON.stringify({enabled: on})});
+    await loadLeadSignals();
+    renderSignalList();
+  } catch (e) { alert(e.message); }
+}
+
+async function createNewSignal(name) {
+  name = (name || "").trim() || "New lead signal";
+  try {
+    const row = await api("/api/lead-signals", {method: "POST", body: JSON.stringify({name})});
+    await setActiveSignal(row.id);
+    await loadConfig();
+    renderSignalList();
+    document.querySelector('.seg button[data-tab="sources"]').click();
+    flash($("srcMsg"), T("signal_created"));
+  } catch (e) { alert(e.message); }
+}
+
 function renderConfig() {
   if (!CONFIG) return;
   $("token").value = "";
   $("token").placeholder = CONFIG.treg_token && CONFIG.treg_token !== "set" ? CONFIG.treg_token : "trg_live_...";
   $("tokenState").textContent = {env: T("tok_env"), file: T("tok_file") + CONFIG.treg_token, none: T("tok_none")}[CONFIG.token_source];
   $("tokenDot").className = "dot" + (CONFIG.token_source === "none" ? "" : " live");
+  const EC = effectiveListenerConfig();
   const active = activeListeners();
-  $("kickerText").textContent = T("kicker", active.names.length, CONFIG.lookback_days);
+  $("kickerText").textContent = T("kicker", active.names.length, EC.lookback_days ?? CONFIG.lookback_days);
   $("liveDot").className = "dot" + (active.names.length ? " live" : "");
   renderIntro(active);
-  $("focus").value = CONFIG.focus || "";
-  $("lookback").value = CONFIG.lookback_days; $("perCall").value = CONFIG.max_cost_per_call_usd;
-  $("perRun").value = CONFIG.max_cost_per_run_usd; $("schedule").value = CONFIG.schedule_hours; $("minKeep").value = CONFIG.min_score_to_keep;
-  $("rules").value = JSON.stringify(CONFIG.rules, null, 2);
-  const rss = CONFIG.rss || {};
+  renderSignalEditorBar();
+  renderSimpleConfig();
+  $("focus").value = EC.focus || "";
+  $("lookback").value = EC.lookback_days ?? CONFIG.lookback_days;
+  $("perCall").value = CONFIG.max_cost_per_call_usd;
+  $("perRun").value = EC.max_cost_per_run_usd ?? CONFIG.max_cost_per_run_usd;
+  $("schedule").value = EC.schedule_hours ?? CONFIG.schedule_hours;
+  $("minKeep").value = EC.min_score_to_keep ?? CONFIG.min_score_to_keep;
+  $("rules").value = JSON.stringify(EC.rules || CONFIG.rules, null, 2);
+  const rss = EC.rss || {};
   $("rssEnabled").checked = !!rss.enabled;
   $("rssFeeds").value = (rss.feeds || []).join("\n");
   $("rssKeywords").value = (rss.keywords || []).join("\n");
-  $("customSources").value = JSON.stringify(CONFIG.custom_sources || [], null, 2);
+  $("customSources").value = JSON.stringify(EC.custom_sources || CONFIG.custom_sources || [], null, 2);
   const fs = $("fSource"), cur = fs.value;
-  const names = ["reddit", "x", "hn", "linkedin", "linkedin_jobs", "facebook", "facebook_group", "instagram", "instagram_reels", "funding", "rss", ...(CONFIG.custom_sources || []).map(c => c.name).filter(Boolean)];
+  const names = ["reddit", "x", "hn", "linkedin", "linkedin_jobs", "facebook", "facebook_group", "instagram", "instagram_reels", "funding", "rss", ...(EC.custom_sources || CONFIG.custom_sources || []).map(c => c.name).filter(Boolean)];
   fs.innerHTML = `<option value="">${T("all")}</option>` + [...new Set(names)].map(n => `<option ${n === cur ? "selected" : ""}>${esc(n)}</option>`).join("");
   const grid = $("srcGrid"); grid.innerHTML = "";
   for (const [key, meta] of Object.entries(SRC_META)) {
-    const s = CONFIG.sources[key] || {};
-    const extra = key === "linkedin_jobs" ? `<label style="margin-top:12px">${T("location")}</label><input type="text" data-loc="${key}" value="${esc(s.location || "United States")}" style="width:100%">`
-                : key === "funding" ? `<label>${T("region")}</label><select data-region="${key}">${["US","EU","GLOBAL"].map(r => `<option ${s.region===r?"selected":""}>${r}</option>`).join("")}</select><p class="note">${T("funding_note")}</p>` : "";
-    const queries = key === "funding" ? "" : `<label>${meta.label ? meta.label() : T("keywords")} · ${(s.queries || []).length}</label><textarea data-q="${key}">${esc((s.queries || []).join("\n"))}</textarea>`;
+    const s = (EC.sources || CONFIG.sources || {})[key] || {};
+    const extra = key === "linkedin_jobs" ? `<label class="form-label" style="margin-top:12px">${T("location")}</label><input class="form-control" type="text" data-loc="${key}" value="${esc(s.location || "United States")}">`
+                : key === "funding" ? `<label class="form-label">${T("region")}</label><select class="form-select" data-region="${key}">${["US","EU","GLOBAL"].map(r => `<option ${s.region===r?"selected":""}>${r}</option>`).join("")}</select><p class="note">${T("funding_note")}</p>` : "";
+    const queries = key === "funding" ? "" : `<label class="form-label">${meta.label ? meta.label() : T("keywords")} · ${(s.queries || []).length}</label><textarea class="form-control" data-q="${key}">${esc((s.queries || []).join("\n"))}</textarea>`;
     const paged = ["reddit", "x", "linkedin_posts", "linkedin_jobs", "facebook_posts", "facebook_groups", "instagram_hashtags", "instagram_reels"].includes(key);
-    const pagesInput = paged ? `<label style="margin-top:12px">${T("pages_label")}</label><input type="number" min="1" max="10" data-pages="${key}" value="${esc(s.max_pages || 3)}" style="width:90px">` : "";
-    grid.insertAdjacentHTML("beforeend", `<div class="pcard"><div class="ph"><label class="switch"><input type="checkbox" data-en="${key}" ${s.enabled ? "checked" : ""}><span></span></label><b>${esc(meta.name())}</b><span class="price">${esc(meta.cost())}</span></div><div class="pt">${queries}${pagesInput}${extra}</div></div>`);
+    const pagesInput = paged ? `<label class="form-label" style="margin-top:12px">${T("pages_label")}</label><input class="form-control" type="number" min="1" max="10" data-pages="${key}" value="${esc(s.max_pages || 3)}" style="width:96px">` : "";
+    grid.insertAdjacentHTML("beforeend", `<article class="pcard surface"><div class="ph"><label class="switch"><input type="checkbox" data-en="${key}" aria-label="${esc(meta.name())}" ${s.enabled ? "checked" : ""}><span></span></label><b>${esc(meta.name())}</b><span class="price">${esc(meta.cost())}</span></div><div class="pt">${queries}${pagesInput}${extra}</div></article>`);
   }
 }
 
@@ -632,15 +1064,77 @@ $("testToken").onclick = async () => {
 $("saveSettings").onclick = async () => {
   try {
     await api("/api/config", {method: "POST", body: JSON.stringify({
-      lookback_days: +$("lookback").value, max_cost_per_call_usd: +$("perCall").value, max_cost_per_run_usd: +$("perRun").value,
-      schedule_hours: +$("schedule").value, min_score_to_keep: +$("minKeep").value})});
+      max_cost_per_call_usd: +$("perCall").value})});
+    if (ACTIVE_SIGNAL) {
+      const prev = ACTIVE_SIGNAL.config || {};
+      await api("/api/lead-signals/" + ACTIVE_SIGNAL.id, {method: "PATCH", body: JSON.stringify({
+        config: {...prev, lookback_days: +$("lookback").value, max_cost_per_run_usd: +$("perRun").value,
+          schedule_hours: +$("schedule").value, min_score_to_keep: +$("minKeep").value},
+      })});
+    } else {
+      await api("/api/config", {method: "POST", body: JSON.stringify({
+        lookback_days: +$("lookback").value, max_cost_per_run_usd: +$("perRun").value,
+        schedule_hours: +$("schedule").value, min_score_to_keep: +$("minKeep").value})});
+    }
     await loadConfig(); flash($("setMsg"), T("saved"));
   } catch (e) { flash($("setMsg"), e.message, false); }
+};
+$("saveSimple").onclick = async () => {
+  if (!linesFrom("simpleInclude").length) return flash($("srcMsg"), T("simple_need_keywords"), false);
+  if (!ACTIVE_SIGNAL) return flash($("srcMsg"), T("signal_new"), false);
+  try {
+    const prev = ACTIVE_SIGNAL.config || {};
+    const config = {...prev, ...buildPayloadFromSimple()};
+    const name = $("editSignalName").value.trim();
+    await api("/api/lead-signals/" + ACTIVE_SIGNAL.id, {
+      method: "PATCH",
+      body: JSON.stringify({config, name: name || ACTIVE_SIGNAL.name}),
+    });
+    await loadConfig();
+    renderSignalList();
+    flash($("srcMsg"), T("saved"));
+  } catch (e) { flash($("srcMsg"), e.message, false); }
+};
+$("newSignalBtn").onclick = () => {
+  const name = prompt(T("signal_name"), T("signal_name_ph"));
+  if (name === null) return;
+  createNewSignal(name);
+};
+$("newSignalFromEditor").onclick = () => {
+  const name = prompt(T("signal_name"), T("signal_name_ph"));
+  if (name === null) return;
+  createNewSignal(name);
+};
+$("renameSignalBtn").onclick = async () => {
+  if (!ACTIVE_SIGNAL) return;
+  const name = $("editSignalName").value.trim();
+  if (!name) return;
+  try {
+    await api("/api/lead-signals/" + ACTIVE_SIGNAL.id, {method: "PATCH", body: JSON.stringify({name})});
+    await loadConfig();
+    renderSignalList();
+    flash($("srcMsg"), T("saved"));
+  } catch (e) { flash($("srcMsg"), e.message, false); }
+};
+$("editSignalSelect").onchange = async () => {
+  await setActiveSignal($("editSignalSelect").value);
+  await loadLeadSignals();
+  renderConfig();
+};
+$("toggleLegacy").onclick = () => {
+  const leg = $("listenersLegacy");
+  leg.classList.toggle("hidden");
+  const hidden = leg.classList.contains("hidden");
+  $("toggleLegacy").dataset.i18n = hidden ? "show_legacy" : "hide_legacy";
+  $("toggleLegacy").textContent = T(hidden ? "show_legacy" : "hide_legacy");
+  if (!hidden) renderConfig();
 };
 $("saveSources").onclick = async () => {
   const sources = {};
   for (const key of Object.keys(SRC_META)) {
-    const s = {enabled: document.querySelector(`[data-en="${key}"]`).checked};
+    const en = document.querySelector(`[data-en="${key}"]`);
+    if (!en) continue;
+    const s = {enabled: en.checked};
     const q = document.querySelector(`[data-q="${key}"]`); if (q) s.queries = q.value.split("\n").map(x => x.trim()).filter(Boolean);
     const loc = document.querySelector(`[data-loc="${key}"]`); if (loc) s.location = loc.value.trim();
     const reg = document.querySelector(`[data-region="${key}"]`); if (reg) s.region = reg.value;
@@ -650,8 +1144,8 @@ $("saveSources").onclick = async () => {
   const lines = id => $(id).value.split("\n").map(x => x.trim()).filter(Boolean);
   const rss = {enabled: $("rssEnabled").checked, feeds: lines("rssFeeds"), keywords: lines("rssKeywords")};
   const focus = $("focus").value.trim();
-  try { await api("/api/config", {method: "POST", body: JSON.stringify({sources, rss, focus})}); await loadConfig(); flash($("srcMsg"), T("saved")); }
-  catch (e) { flash($("srcMsg"), e.message, false); }
+  try { await api("/api/config", {method: "POST", body: JSON.stringify({sources, rss, focus})}); await loadConfig(); flash($("legacyMsg"), T("saved")); }
+  catch (e) { flash($("legacyMsg"), e.message, false); }
 };
 $("saveCustom").onclick = async () => {
   let custom; try { custom = JSON.parse($("customSources").value); if (!Array.isArray(custom)) throw new Error("must be an array"); }
@@ -675,7 +1169,7 @@ async function searchCatalog() {
                  method: r.method || "GET", params: {[key]: "{q}"}, queries: [q]});
       $("customSources").value = JSON.stringify(list, null, 2);
       flash($("customMsg"), T("added"));
-      $("customSources").scrollIntoView({behavior: "smooth", block: "center"});
+      $("customSources").scrollIntoView({behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center"});
     });
   } catch (e) { $("catResults").innerHTML = `<div class="note">${esc(e.message)}</div>`; }
 }
@@ -712,11 +1206,112 @@ $("rescore").onclick = async () => {
   catch (e) { flash($("rulesMsg"), e.message, false); }
 };
 
-let STATUS_FILTER = "new", COUNTS = null;
+let STATUS_FILTER = "new", COUNTS = null, SELECTED_ID = null;
+
+function parseLeadIdFromPath() {
+  const m = location.pathname.match(/^\/leads\/(\d+)\/?$/);
+  return m ? +m[1] : null;
+}
+
+function showLeadsTab() {
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.tab === "leads"));
+  ["leads", "sources", "settings"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== "leads"));
+}
+
+function closeLeadDetail(fromPopstate = false) {
+  SELECTED_ID = null;
+  $("leadsListView").classList.remove("hidden");
+  $("leadDetailView").classList.add("hidden");
+  if (!fromPopstate && /^\/leads\/\d+/.test(location.pathname)) {
+    history.pushState({}, "", "/");
+  }
+  renderRows();
+}
+
+async function openLeadDetail(id, { replace = false } = {}) {
+  id = +id;
+  if (!id) return;
+  SELECTED_ID = id;
+  showLeadsTab();
+  $("leadsListView").classList.add("hidden");
+  $("leadDetailView").classList.remove("hidden");
+  const path = `/leads/${id}`;
+  if (replace) history.replaceState({ lead: id }, "", path);
+  else if (location.pathname !== path) history.pushState({ lead: id }, "", path);
+  renderRows();
+  await renderLeadDetail();
+  window.scrollTo(0, 0);
+}
+
+async function renderLeadDetail() {
+  const body = $("leadDetailBody");
+  if (SELECTED_ID == null) {
+    body.innerHTML = `<p class="muted detail-empty">${T("detail_empty")}</p>`;
+    return;
+  }
+  let r = findLeadRow(SELECTED_ID);
+  if (!r) {
+    try { r = await api(`/api/signals/${SELECTED_ID}`); }
+    catch { body.innerHTML = `<p class="muted">${T("detail_not_found")}</p>`; return; }
+  }
+  const cls = r.score >= 40 ? "high" : r.score >= 25 ? "mid" : "";
+  const matched = (r.matched || []).map(m => `<span class="pill match">${esc(m)}</span>`).join("");
+  body.innerHTML = `
+    <h2 class="detail-page-title">${T("detail_title")}</h2>
+    <div class="detail-score score ${cls}">${r.score}<small>${esc(r.persona)}</small></div>
+    <div class="detail-meta meta">
+      <span class="pill src src-${esc(r.source)}">${esc(r.source)}</span>
+      ${r.community ? `<span>${esc(r.community)}</span>` : ""}
+      <span>· ${ago(r.created_utc)}</span>
+      <span>· ↑ ${r.engagement}</span>
+    </div>
+    ${r.title ? `<h3 class="detail-title">${esc(r.title)}</h3>` : ""}
+    <p class="detail-text">${esc(r.text)}</p>
+    <div class="detail-matched">${matched}</div>
+    <p class="muted detail-query">${T("q_prefix")}${esc(r.query)}</p>
+    <div class="detail-who">${r.author_url ? `<a href="${safeUrl(r.author_url)}" target="_blank" rel="noopener noreferrer">${esc(r.author || "—")}</a>` : esc(r.author || "—")}</div>
+    <div class="detail-action-bar" role="toolbar" aria-label="${T("detail_title")}">
+      <a class="detail-action-tab detail-action-tab--primary" href="${safeUrl(r.url)}" target="_blank" rel="noopener noreferrer">${T("detail_open")}</a>
+      <select data-id="${r.id}" class="detail-action-tab detail-action-tab--select form-select st detail-st" aria-label="${T("detail_status_label")}">${["new","qualified","contacted","replied","ignored"].map(s => `<option value="${s}" ${s===r.status?"selected":""}>${T("st_" + s)}</option>`).join("")}</select>
+      <button type="button" class="detail-action-tab detail-action-tab--note notebtn${r.note ? " has" : ""}" data-id="${r.id}">${r.note ? T("note_edit") : T("note_add")}</button>
+    </div>
+    <section class="detail-note-panel surface" aria-labelledby="detailNoteHeading">
+      <h3 id="detailNoteHeading" class="detail-note-heading">${T("detail_note_heading")}</h3>
+      ${r.note
+        ? `<p class="detail-note-body">${esc(r.note)}</p>`
+        : `<p class="detail-note-empty muted">${T("detail_note_empty")}</p>`}
+    </section>`;
+  const st = body.querySelector("select.st");
+  if (st) st.onchange = () => {
+    api(`/api/signals/${st.dataset.id}`, {method: "POST", body: JSON.stringify({status: st.value})})
+      .then(() => { r.status = st.value; loadCounts(); loadStatus(); renderRows(); renderLeadDetail(); });
+  };
+  body.querySelectorAll("button.notebtn").forEach(b => b.onclick = () => openNote(+b.dataset.id));
+}
+
+$("leadDetailBack").onclick = e => { e.preventDefault(); closeLeadDetail(); };
+window.addEventListener("popstate", () => {
+  const id = parseLeadIdFromPath();
+  if (id) openLeadDetail(id, { replace: true });
+  else if (!$("leadDetailView").classList.contains("hidden")) closeLeadDetail(true);
+});
+
+$("sidebarToggle").onclick = () => {
+  const shell = $("appShell");
+  const open = shell.classList.toggle("sidebar-open");
+  $("sidebarToggle").setAttribute("aria-expanded", open ? "true" : "false");
+};
 function filterQS() {
   const p = new URLSearchParams();
   if (STATUS_FILTER) p.set("status", STATUS_FILTER);
-  [["source","fSource"],["persona","fPersona"],["scope","fScope"],["sort","fSort"],["min_score","fMin"],["q","fQ"]].forEach(([k,id]) => { const v = $(id).value.trim(); if (v) p.set(k, v); });
+  [["source","fSource"],["persona","fPersona"],["sort","fSort"],["min_score","fMin"],["q","fQ"]].forEach(([k,id]) => { const v = $(id).value.trim(); if (v) p.set(k, v); });
+  const scope = $("fScope").value;
+  if (scope) {
+    p.set("scope", scope);
+    if (scope === "today") p.set("tz_offset", String(tzOffsetMinutes()));
+  }
+  const sig = leadsListenerId();
+  if (sig) p.set("lead_signal_id", String(sig));
   return p.toString();
 }
 function ago(ts) {
@@ -732,34 +1327,74 @@ function rowHtml(r) {
     const cls = r.score >= 40 ? "high" : r.score >= 25 ? "mid" : "";
     const matched = (r.matched || []).slice(0, 5).map(m => `<span class="pill match">${esc(m)}</span>`).join("");
     const head = r.title ? `<h3><a href="${safeUrl(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a></h3>` : "";
-    return `<div class="lead">
+    return `<div class="lead${+r.id === +SELECTED_ID ? " selected" : ""}" data-id="${r.id}" data-href="/leads/${r.id}" role="link" tabindex="0" aria-pressed="${+r.id === +SELECTED_ID}">
       <div class="score ${cls}">${r.score}<small>${esc(r.persona)}</small></div>
       <div>
         <div class="meta"><span class="pill src src-${esc(r.source)}">${esc(r.source)}</span>${r.community ? `<span>${esc(r.community)}</span>` : ""}<span>· ${ago(r.created_utc)}</span><span>· ↑ ${r.engagement}</span><span>· ${T("seen", ago(r.first_seen))}</span>${isNew(r) ? ` <span class="badge-new">${T("new_badge")}</span>` : ""}</div>
         ${head}
-        <div class="snippet" title="${T("expand")}">${esc(r.text)}</div>
+        <div class="snippet" title="${T("expand_dblclick")}">${esc(r.text)}</div>
         <div class="foot">${matched}<span>${T("q_prefix")}${esc(r.query)}</span>${!r.title ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener noreferrer">${T("open")}</a>` : ""}</div>
       </div>
       <div class="side">
         <div class="who">${r.author_url ? `<a href="${safeUrl(r.author_url)}" target="_blank" rel="noopener noreferrer">${esc(r.author || "—")}</a>` : esc(r.author || "—")}</div>
-        <select data-id="${r.id}" class="st">${["new","qualified","contacted","replied","ignored"].map(s => `<option value="${s}" ${s===r.status?"selected":""}>${T("st_" + s)}</option>`).join("")}</select>
-        <button class="notebtn${r.note ? " has" : ""}" data-id="${r.id}" title="${esc(r.note || T("note_add"))}">${r.note ? "✎ " + esc(r.note) : T("note_add")}</button>
+        <select data-id="${r.id}" class="form-select st">${["new","qualified","contacted","replied","ignored"].map(s => `<option value="${s}" ${s===r.status?"selected":""}>${T("st_" + s)}</option>`).join("")}</select>
+        <button type="button" class="notebtn${r.note ? " has" : ""}" data-id="${r.id}" title="${esc(r.note || T("note_add"))}">${r.note ? esc(r.note) : T("note_add")}</button>
       </div></div>`;
 }
+function findLeadRow(id) {
+  return ROWS.find(x => +x.id === +id) || SIGNAL_PANEL_ROWS.find(x => +x.id === +id);
+}
+
 function bindRows() {
-  document.querySelectorAll(".snippet").forEach(s => s.onclick = () => s.classList.toggle("open"));
   document.querySelectorAll("select.st").forEach(s => s.onchange = () => {
-    const r = ROWS.find(x => x.id == s.dataset.id);
+    const r = findLeadRow(s.dataset.id);
     api(`/api/signals/${s.dataset.id}`, {method: "POST", body: JSON.stringify({status: s.value})})
-      .then(() => { if (r) r.status = s.value; loadCounts(); loadStatus(); });
+      .then(() => {
+        if (r) r.status = s.value;
+        loadCounts();
+        loadStatus();
+        if (SIGNAL_CARD_PANEL && SIGNAL_CARD_PANEL.tab === "leads") loadSignalCardLeads(SIGNAL_CARD_PANEL.id);
+      });
   });
   document.querySelectorAll("button.notebtn").forEach(b => b.onclick = () => openNote(+b.dataset.id));
 }
 
+(function bindLeadListEvents() {
+  function handleLeadActivate(container, e) {
+    const lead = e.target.closest(".lead");
+    if (!lead || !container.contains(lead)) return;
+    if (e.target.closest(".side select, .side button, .side .notebtn")) return;
+    if (e.target.closest("select, button, textarea, input, label")) return;
+    const link = e.target.closest("a");
+    if (link && (e.ctrlKey || e.metaKey || e.shiftKey)) return;
+    if (link) e.preventDefault();
+    openLeadDetail(lead.dataset.id);
+  }
+  [$("rows"), $("signalList")].forEach(container => {
+    if (!container) return;
+    container.addEventListener("click", e => handleLeadActivate(container, e));
+    container.addEventListener("dblclick", e => {
+      const sn = e.target.closest(".snippet");
+      if (sn && container.contains(sn)) {
+        e.preventDefault();
+        sn.classList.toggle("open");
+      }
+    });
+    container.addEventListener("keydown", e => {
+      const lead = e.target.closest(".lead");
+      if (!lead || !container.contains(lead)) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openLeadDetail(lead.dataset.id);
+      }
+    });
+  });
+})();
+
 // ---- note modal
 let NOTE_ID = null;
 function openNote(id) {
-  const r = ROWS.find(x => x.id === id); if (!r) return;
+  const r = findLeadRow(id); if (!r) return;
   NOTE_ID = id;
   $("noteCtx").textContent = `${r.source} · ${r.author || "—"} · ${r.title || r.text || ""}`;
   $("noteText").value = r.note || "";
@@ -773,8 +1408,12 @@ async function saveNote() {
   const note = $("noteText").value.trim(), id = NOTE_ID;
   try {
     await api(`/api/signals/${id}`, {method: "POST", body: JSON.stringify({note})});
-    const r = ROWS.find(x => x.id === id); if (r) r.note = note;
-    closeNote(); renderRows();
+    const r = findLeadRow(id);
+    if (r) r.note = note;
+    closeNote();
+    renderRows();
+    if (SELECTED_ID === id) renderLeadDetail();
+    if (SIGNAL_CARD_PANEL && SIGNAL_CARD_PANEL.tab === "leads") loadSignalCardLeads(SIGNAL_CARD_PANEL.id);
   } catch (e) { flash($("noteMsg"), e.message, false); }
 }
 $("noteSave").onclick = saveNote;
@@ -795,7 +1434,7 @@ async function loadCounts() {
 }
 function renderBoard() {
   const c = COUNTS || {by_status: {}, total: 0};
-  $("board").innerHTML = BOARD.map(([s, k]) => `<button class="b-${s || "all"}" data-s="${s}" aria-pressed="${s === STATUS_FILTER}">
+  $("board").innerHTML = BOARD.map(([s, k]) => `<button type="button" class="b-${s || "all"}" data-s="${s}" aria-pressed="${s === STATUS_FILTER}">
     <b>${s ? (c.by_status[s] || 0) : c.total}</b><span>${T(k)}</span></button>`).join("");
   $("board").querySelectorAll("button").forEach(b => b.onclick = () => {
     STATUS_FILTER = b.dataset.s; renderBoard(); loadSignals();
@@ -807,8 +1446,8 @@ async function loadSignals(append = false) {
   const res = await fetch(`/api/signals?${qs}&limit=${PAGE}&offset=${SHOWN}`);
   const rows = await res.json().catch(() => []);
   TOTAL = +(res.headers.get("X-Total-Count") || rows.length);
-  $("exportCsv").href = "/api/export?fmt=csv&" + qs;
-  $("exportJson").href = "/api/export?fmt=json&" + qs;
+  if ($("leadsExportCsv")) $("leadsExportCsv").href = "/api/export?fmt=csv&" + qs;
+  if ($("leadsExportJson")) $("leadsExportJson").href = "/api/export?fmt=json&" + qs;
   ROWS = append === true ? ROWS.concat(rows) : rows;
   if (append !== true) loadCounts().catch(() => {});
   SHOWN = ROWS.length;
@@ -816,10 +1455,17 @@ async function loadSignals(append = false) {
 }
 // Rendering only uses cached data, so a language switch never depends on the server.
 function renderRows() {
-  $("rows").innerHTML = ROWS.map(rowHtml).join("") || `<div class="empty"><b>${T("empty_t")}</b>${T("empty_d")}</div>`;
+  const lr = leadsListenerRow();
+  const emptyD = lr ? T("empty_d_listener", lr.name) : T("empty_d");
+  $("rows").innerHTML = ROWS.map(rowHtml).join("") || `<div class="empty"><b>${T("empty_t")}</b>${emptyD}</div>`;
   $("countInfo").textContent = TOTAL ? T("count", SHOWN, TOTAL) : "";
   $("moreBtn").classList.toggle("hidden", SHOWN >= TOTAL);
   bindRows();
+  if (SELECTED_ID != null && !ROWS.some(x => +x.id === +SELECTED_ID) && $("leadDetailView").classList.contains("hidden")) {
+    closeLeadDetail();
+  } else if (SELECTED_ID != null && !$("leadDetailView").classList.contains("hidden")) {
+    renderLeadDetail();
+  }
 }
 
 function renderLog(text) {
@@ -833,13 +1479,74 @@ function renderLog(text) {
 
 let wasRunning = false;
 let STATUS = null;
+let progressSeen = 0;
+let progressBooted = false;
+const runToastQueue = [];
+let runToastOpen = false;
+let runToastTimer = null;
+
+function enqueueRunToast(text) {
+  if (!text) return;
+  runToastQueue.push(text);
+  pumpRunToast();
+}
+
+function pumpRunToast() {
+  const el = $("runToast");
+  if (!el || runToastOpen) return;
+  const text = runToastQueue.shift();
+  if (!text) return;
+  runToastOpen = true;
+  el.textContent = text;
+  el.classList.remove("hidden");
+  clearTimeout(runToastTimer);
+  runToastTimer = setTimeout(() => {
+    el.classList.add("hidden");
+    runToastOpen = false;
+    pumpRunToast();
+  }, 2200);
+}
+
+function ingestRunProgress(s) {
+  const events = s.progress_events || [];
+  const maxSeq = events.reduce((m, e) => Math.max(m, e.seq || 0), 0);
+  if (!progressBooted) {
+    progressBooted = true;
+    if (!s.running_any) progressSeen = maxSeq;
+  }
+  const fresh = events.filter(e => (e.seq || 0) > progressSeen);
+  if (fresh.length) progressSeen = fresh[fresh.length - 1].seq;
+  for (const e of fresh) {
+    const label = e.platform_label || e.platform;
+    enqueueRunToast(e.phase === "skipped" ? T("skip_platform", label) : T("run_on_platform", label));
+  }
+  const live = $("runLive");
+  const cur = s.progress;
+  if (live && s.running_any && cur) {
+    live.classList.remove("hidden");
+    $("runLiveSignal").textContent = cur.signal_name || s.running_signal_name || "";
+    const label = cur.platform_label || cur.platform || "";
+    $("runLivePlatform").textContent = cur.phase === "skipped" ? T("skip_platform", label) : T("run_on_platform", label);
+  } else if (live) {
+    live.classList.add("hidden");
+  }
+}
+
 async function loadStatus() {
-  const s = STATUS = await api("/api/status");
+  const lid = leadsListenerId();
+  const q = lid ? "?lead_signal_id=" + encodeURIComponent(lid) : "";
+  const s = STATUS = await api("/api/status" + q);
+  ingestRunProgress(s);
   renderStatus();
   const prevRun = LAST_RUN && LAST_RUN.started;
   LAST_RUN = s.stats.last_run || null;
-  if ((wasRunning && !s.running) || (prevRun && LAST_RUN && LAST_RUN.started !== prevRun)) loadSignals();
-  wasRunning = s.running;
+  const finished = wasRunning && !s.running_any;
+  if (finished || (prevRun && LAST_RUN && LAST_RUN.started !== prevRun)) loadSignals();
+  if (finished) {
+    const n = (s.stats && s.stats.last_run && s.stats.last_run.new) || 0;
+    enqueueRunToast(T("run_finished", n));
+  }
+  wasRunning = !!s.running_any;
 }
 function renderStatus() {
   if (!STATUS) return;
@@ -847,26 +1554,49 @@ function renderStatus() {
   $("stats").innerHTML = [
     // Per-status counts live in the status board below.
     ["s_last", st.last_run ? st.last_run.new : 0, true], ["s_total", st.total], ["s_spent", "$" + st.spent_30d_usd.toFixed(3)], ["s_calls", st.calls]
-  ].map(([k, v, a]) => `<div class="stat${a ? " accent" : ""}"><b>${v}</b><span>${T(k)}</span></div>`).join("");
-  $("runBtn").disabled = s.running;
-  $("runState").textContent = s.running ? T("running") : (s.next_run ? T("next_run") + new Date(s.next_run * 1000).toLocaleString(LANG === "zh" ? "zh-CN" : "en-US") : "python app.py --run-once");
+  ].map(([k, v, a]) => `<div class="stat${a ? " stat--up" : ""}"><b>${v}</b><span>${T(k)}</span></div>`).join("");
+  syncLeadsPageActions();
+  const lr = leadsListenerRow();
+  $("runState").textContent = s.running ? T("running") : (lr ? `python app.py --run-once --signal ${lr.id}` : "python app.py --run-once");
   if (s.last_log && s.last_log.length) renderLog(s.last_log.join("\n"));
   else renderLog(s.runs && s.runs[0] ? s.runs[0].log : "");
 }
-$("runBtn").onclick = async () => {
-  try { await api("/api/run", {method: "POST", body: "{}"}); wasRunning = true; $("termBox").open = true; loadStatus(); }
-  catch (e) { alert(e.message); }
-};
+async function runLeadsListener() {
+  const lid = leadsListenerId();
+  if (!lid) return alert(T("signal_new"));
+  try {
+    await api("/api/run", {method: "POST", body: JSON.stringify({lead_signal_id: lid})});
+    wasRunning = true; $("termBox").open = true; loadStatus();
+    loadLeadSignals().then(renderSignalList);
+  } catch (e) { alert(e.message); }
+}
+$("leadsRunBtn").onclick = () => runLeadsListener();
 $("refreshBtn").onclick = () => loadSignals();
 ["fSource","fPersona","fScope","fSort"].forEach(id => $(id).onchange = () => loadSignals());
+$("fSignal").onchange = () => refreshLeadsListenerContext();
 $("moreBtn").onclick = () => loadSignals(true);
 $("fQ").onkeydown = e => { if (e.key === "Enter") loadSignals(); };
 
 applyI18n();
-// Keep server-side log language in sync with the stored UI choice.
-api("/api/config", {method: "POST", body: JSON.stringify({lang: LANG})}).catch(() => {})
-  .finally(() => loadConfig().then(() => loadStatus()).then(() => loadSignals()));
-setInterval(loadStatus, 3000);
+listenersEditorRootEl = document.getElementById("listenersEditorRoot");
+loadConfig().then(() => refreshLeadsListenerContext()).then(() => renderSignalList()).then(() => {
+  const id = parseLeadIdFromPath();
+  if (id) openLeadDetail(id, { replace: true });
+});
+function pollStatus() {
+  loadStatus()
+    .catch(() => {})
+    .finally(() => setTimeout(pollStatus, STATUS && STATUS.running_any ? 800 : 3000));
+}
+pollStatus();
+setInterval(() => {
+  loadLeadSignals().then(() => {
+    if (!$("tab-lead-signals").classList.contains("hidden")) {
+      if (SIGNAL_CARD_PANEL) return;
+      renderSignalList();
+    }
+  });
+}, 3000);
 
 </script>
 </body>

@@ -5,6 +5,7 @@ import json
 import os
 import threading
 
+from .free.defaults import FREE_COLLECTORS_DEFAULT
 from .scoring import DEFAULT_RULES
 
 # Example strategy (finding companies that struggle with AI search visibility). Replace with your own.
@@ -67,6 +68,11 @@ DEFAULT_CONFIG = {
          "fields": {"id": "video_id", "author": "author", "created": "published_time"}},
     ],
     "rules": DEFAULT_RULES,
+    # Optional snapshot from the simplified Listeners UI (prompt, include/ignore keywords, platform toggles).
+    "listener_simple": None,
+    "free_collectors": copy.deepcopy(FREE_COLLECTORS_DEFAULT),
+    # Active lead signal for Listeners tab and default Run (integer id in DB).
+    "active_lead_signal_id": None,
 }
 
 
@@ -118,7 +124,7 @@ class Config:
 
 def _merge(dst, src):
     for k, v in src.items():
-        if isinstance(v, dict) and isinstance(dst.get(k), dict) and k not in ("rules",):
+        if isinstance(v, dict) and isinstance(dst.get(k), dict) and k not in ("rules", "listener_simple"):
             _merge(dst[k], v)
         else:
             dst[k] = v

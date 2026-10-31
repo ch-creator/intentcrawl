@@ -1,0 +1,48 @@
+{
+  "free_collectors": {
+    "enabled": true,
+    "replace_treg": true,
+    "incremental": true
+  },
+  "min_score_to_keep": 15,
+  "lookback_days": 7,
+  "schedule_hours": 24,
+  "rules": {
+    "intent": {
+      "looking for": 10,
+      "need help": 10,
+      "need developer": 12,
+      "recommend agency": 15,
+      "recommend consultant": 15,
+      "hire": 8,
+      "budget": 6,
+      "vendor": 6,
+      "implementation partner": 12,
+      "proposal": 8,
+      "rfp": 10
+    },
+    "pain": {
+      "checkout issue": 10,
+      "conversion problem": 10,
+      "migration failed": 12,
+      "inventory issue": 8,
+      "manual process": 8,
+      "customer support issue": 8,
+      "crm problem": 10,
+      "data sync issue": 10,
+      "erp issue": 12,
+      "integration issue": 10
+    },
+    "negative": {
+      "job seeker": -10,
+      "open to work": -15,
+      "giveaway": -15,
+      "airdrop": -20,
+      "student project": -8
+    },
+    "persona": {
+      "saas": ["saas", "b2b", "startup", "founder"],
+      "dtc": ["shopify", "ecommerce", "dtc", "store"]
+    }
+  }
+}

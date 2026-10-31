@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from listener import runner as runner_mod  # noqa: E402
 from listener.config import Config  # noqa: E402
+from listener.lead_signals import extract_signal_config  # noqa: E402
 from listener.store import Store  # noqa: E402
 
 
@@ -33,6 +34,7 @@ class RunnerPagingTests(unittest.TestCase):
                          "sources": {k: {"enabled": False} for k in ("hn", "reddit", "x", "linkedin_posts",
                                                                     "linkedin_jobs", "funding")}})
         self.store = Store(os.path.join(d, "s.db"))
+        self.signal_id = self.store.ensure_default_lead_signal(self.cfg.data)
         self.saved = dict(runner_mod.TREG_SOURCES)
 
     def tearDown(self):
@@ -45,7 +47,8 @@ class RunnerPagingTests(unittest.TestCase):
         runner_mod.TREG_SOURCES["reddit"] = fake_source(calls)
         self.cfg.update({"max_cost_per_run_usd": budget,
                          "sources": {"reddit": {"enabled": True, "queries": ["q1"], "max_pages": max_pages}}})
-        result = runner_mod.Runner(self.cfg, self.store).run()
+        self.store.update_lead_signal(self.signal_id, config=extract_signal_config(self.cfg.data))
+        result = runner_mod.Runner(self.cfg, self.store).run(self.signal_id)
         return calls, result
 
     def test_stops_at_max_pages(self):

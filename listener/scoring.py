@@ -1,5 +1,6 @@
 """Rule-based pain/intent scoring. Transparent and free; an LLM pass can be layered on later
 via the JSON export (e.g. a newmax skill that re-scores `new` leads)."""
+import copy
 import re
 
 DEFAULT_RULES = {
@@ -37,9 +38,45 @@ def _hits(text, table):
     return found, total
 
 
+def normalize_rules(rules):
+    """Accept legacy list rules [{type, phrase, score}] or dict buckets used by score_signal."""
+    if not rules:
+        return DEFAULT_RULES
+    if isinstance(rules, list):
+        out = {"pain": {}, "intent": {}, "negative": {}, "persona": dict(DEFAULT_RULES["persona"])}
+        for row in rules:
+            if not isinstance(row, dict):
+                continue
+            phrase = (row.get("phrase") or "").strip().lower()
+            if not phrase:
+                continue
+            kind = (row.get("type") or "pain").strip().lower()
+            try:
+                weight = int(row.get("score", 0))
+            except (TypeError, ValueError):
+                weight = 0
+            if kind == "persona":
+                persona_name = (row.get("persona") or row.get("name") or "other").strip().lower()
+                words = row.get("words") or row.get("keywords") or [phrase]
+                if isinstance(words, str):
+                    words = [w.strip() for w in words.split(",") if w.strip()]
+                out["persona"][persona_name] = [w.lower() for w in words if w]
+            elif kind in out:
+                out[kind][phrase] = weight
+        return out
+    if isinstance(rules, dict):
+        if any(isinstance(rules.get(k), dict) for k in ("pain", "intent", "negative", "persona")):
+            merged = copy.deepcopy(DEFAULT_RULES)
+            for bucket in ("pain", "intent", "negative", "persona"):
+                if isinstance(rules.get(bucket), dict):
+                    merged[bucket] = rules[bucket]
+            return merged
+    return DEFAULT_RULES
+
+
 def score_signal(sig, rules=None):
     """Return (score 0-100, persona, matched_terms)."""
-    rules = rules or DEFAULT_RULES
+    rules = normalize_rules(rules)
     # community carries subreddit / HN thread title, useful for persona and for filtering hiring threads.
     text = f"{sig.get('title', '')} {sig.get('text', '')} {sig.get('community', '')}".lower()
     pain_f, pain = _hits(text, rules.get("pain", {}))

@@ -52,6 +52,13 @@ class StoreQueryTests(unittest.TestCase):
         self.assertEqual([r["external_id"] for r in page1 + page2], ["1", "3", "4", "2"])
         self.assertEqual(self.st.stats()["last_run"]["new"], 2)
 
+    def test_get_signal(self):
+        row = self.st.get_signal(9999)
+        self.assertIsNone(row)
+        one = self.st.list_signals(limit=1)[0]
+        got = self.st.get_signal(one["id"])
+        self.assertEqual(got["external_id"], one["external_id"])
+
 
 if __name__ == "__main__":
     unittest.main()

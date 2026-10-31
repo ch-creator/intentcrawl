@@ -94,6 +94,16 @@ class ScoringTests(unittest.TestCase):
         _, persona, _ = score_signal(sources.parse_linkedin_posts(LI_POSTS, "q")[0])
         self.assertEqual(persona, "dtc")
 
+    def test_list_rules_from_config(self):
+        pain = sources.parse_reddit(REDDIT, "q")[0]
+        list_rules = [
+            {"type": "pain", "phrase": "organic traffic down", "score": 12},
+            {"type": "intent", "phrase": "looking for an agency", "score": 15},
+        ]
+        score, _, matched = score_signal(pain, list_rules)
+        self.assertGreater(score, 20)
+        self.assertTrue(matched)
+
 
 class StoreConfigTests(unittest.TestCase):
     def setUp(self):

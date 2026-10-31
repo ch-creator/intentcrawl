@@ -6,7 +6,9 @@
 """
 import json
 import re
+import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -195,10 +197,49 @@ def _rss_time(s):
         return to_epoch(s)
 
 
-def fetch_rss(feed_url, keywords=None, timeout=30):
-    req = urllib.request.Request(feed_url, headers={"User-Agent": f"{USER_AGENT} (+rss)"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return parse_feed(r.read(), feed_url, keywords)
+_reddit_rss_lock = threading.Lock()
+_last_reddit_rss_at = 0.0
+
+
+def fetch_rss(feed_url, keywords=None, timeout=30, min_interval=0, max_retries=3):
+    """Fetch RSS/Atom. For reddit.com feeds use min_interval (seconds) between requests and 429 retries."""
+    is_reddit = "reddit.com" in (feed_url or "")
+    ua = f"{USER_AGENT} (+rss)"
+    if is_reddit:
+        ua = (
+            "Mozilla/5.0 (compatible; LeadSignalListener/0.1; +https://github.com/yangyixxxx/lead-signal-listener) "
+            "RSS reader"
+        )
+    last_err = None
+    for attempt in range(max(1, max_retries)):
+        if is_reddit and min_interval:
+            global _last_reddit_rss_at
+            with _reddit_rss_lock:
+                wait = min_interval - (time.time() - _last_reddit_rss_at)
+                if wait > 0:
+                    time.sleep(wait)
+        try:
+            req = urllib.request.Request(feed_url, headers={"User-Agent": ua, "Accept": "application/rss+xml, application/atom+xml, */*"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                body = r.read()
+            if is_reddit:
+                with _reddit_rss_lock:
+                    _last_reddit_rss_at = time.time()
+            return parse_feed(body, feed_url, keywords)
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if e.code == 429 and attempt < max_retries - 1:
+                retry_after = e.headers.get("Retry-After") if e.headers else None
+                try:
+                    pause = max(2, int(retry_after or 0))
+                except (TypeError, ValueError):
+                    pause = 2 ** (attempt + 2)
+                time.sleep(min(pause, 120))
+                continue
+            raise
+    if last_err:
+        raise last_err
+    return []
 
 
 # ---------- import ----------

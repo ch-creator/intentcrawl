@@ -1,0 +1,457 @@
+{
+  "treg_token": "",
+  "treg_org": "",
+  "lang": "en",
+  "focus": "Businesses actively seeking custom software, Shopify, SaaS, CRM/ERP implementation, AI automation, or development partners—not tutorials or job seekers.",
+  "lookback_days": 7,
+  "max_cost_per_call_usd": 0.05,
+  "max_cost_per_run_usd": 1.0,
+  "schedule_hours": 24,
+  "min_score_to_keep": 35,
+  "lead_scoring": {
+    "min_score_to_keep": 35,
+    "high_intent_threshold": 60,
+    "priority_lead_threshold": 80
+  },
+  "sources": {
+    "hn": {
+      "enabled": false,
+      "queries": [
+        "shopify",
+        "crm",
+        "erp",
+        "saas",
+        "automation",
+        "artificial intelligence",
+        "workflow",
+        "dashboard",
+        "admin panel"
+      ]
+    },
+    "reddit": {
+      "enabled": false,
+      "max_pages": 2,
+      "queries": [
+        "need software developer",
+        "need web developer",
+        "looking for development company",
+        "recommend development agency",
+        "shopify developer needed",
+        "need ecommerce developer",
+        "need custom software",
+        "looking for CRM solution",
+        "looking for ERP solution",
+        "business automation help",
+        "need AI automation",
+        "need chatbot",
+        "need SaaS developer",
+        "need dashboard",
+        "need admin panel",
+        "custom web application",
+        "replace excel workflow",
+        "manual process automation",
+        "ERP implementation",
+        "CRM implementation",
+        "need API integration"
+      ]
+    },
+    "x": {
+      "enabled": false,
+      "max_pages": 2,
+      "queries": [
+        "looking for software agency",
+        "need developer urgently",
+        "need shopify expert",
+        "looking for ERP consultant",
+        "recommend crm software",
+        "need custom web application",
+        "need SaaS platform",
+        "need AI automation",
+        "need chatbot solution",
+        "need internal tool",
+        "need workflow automation",
+        "ERP migration",
+        "CRM migration",
+        "need Odoo developer",
+        "need ERPNext consultant"
+      ]
+    },
+    "linkedin_posts": {
+      "enabled": false,
+      "max_pages": 2,
+      "queries": [
+        "need vendor",
+        "need implementation partner",
+        "looking for software company",
+        "need software solution",
+        "need development partner",
+        "business process automation",
+        "need ERP implementation",
+        "need CRM implementation",
+        "need SaaS platform",
+        "need Shopify agency"
+      ]
+    },
+    "linkedin_jobs": {
+      "enabled": false,
+      "max_pages": 2,
+      "location": "United States",
+      "queries": [
+        "ERP Consultant",
+        "ERP Developer",
+        "CRM Developer",
+        "Software Development Agency",
+        "Shopify Developer",
+        "Shopify Plus Expert",
+        "AI Engineer",
+        "AI Automation",
+        "Technical Consultant",
+        "Digital Transformation",
+        "ERP Implementation",
+        "Odoo Consultant",
+        "ERPNext Consultant",
+        "Custom Software",
+        "Software Vendor"
+      ]
+    },
+    "funding": {
+      "enabled": false,
+      "region": "US"
+    },
+    "facebook_posts": {
+      "enabled": false,
+      "max_pages": 1,
+      "queries": []
+    },
+    "facebook_groups": {
+      "enabled": false,
+      "max_pages": 2,
+      "queries": []
+    },
+    "instagram_hashtags": {
+      "enabled": false,
+      "max_pages": 2,
+      "queries": []
+    },
+    "instagram_reels": {
+      "enabled": false,
+      "max_pages": 2,
+      "queries": []
+    }
+  },
+  "rss": {
+    "enabled": false,
+    "keywords": [
+      "need software developer",
+      "need web developer",
+      "looking for development company",
+      "recommend development agency",
+      "shopify developer needed",
+      "need ecommerce developer",
+      "need custom software",
+      "looking for CRM solution",
+      "looking for ERP solution",
+      "business automation help",
+      "need AI automation",
+      "need chatbot"
+    ],
+    "feeds": [
+      "https://www.reddit.com/r/shopify/new/.rss",
+      "https://www.reddit.com/r/ecommerce/new/.rss",
+      "https://www.reddit.com/r/SaaS/new/.rss",
+      "https://www.reddit.com/r/startups/new/.rss",
+      "https://www.reddit.com/r/Entrepreneur/new/.rss",
+      "https://news.ycombinator.com/rss",
+      "https://techcrunch.com/category/startups/feed/"
+    ]
+  },
+  "custom_sources": [],
+  "rules": {
+    "pain": {
+      "checkout issue": 25,
+      "conversion issue": 25,
+      "migration failed": 30,
+      "inventory issue": 20,
+      "manual process": 20,
+      "spreadsheet nightmare": 25,
+      "workflow issue": 20,
+      "integration issue": 20,
+      "crm issue": 20,
+      "erp issue": 20,
+      "system limitation": 15,
+      "legacy software": 15,
+      "slow website": 20,
+      "website broken": 30,
+      "need automation": 25,
+      "too much manual work": 25,
+      "customer support issue": 15,
+      "data synchronization": 20,
+      "reporting issue": 15
+    },
+    "intent": {
+      "looking for": 30,
+      "recommend": 25,
+      "who can build": 35,
+      "need developer": 35,
+      "need agency": 35,
+      "agency recommendation": 35,
+      "implementation partner": 40,
+      "vendor recommendation": 40,
+      "consultant recommendation": 35,
+      "hire developer": 35,
+      "need help": 25,
+      "budget approved": 50,
+      "rfp": 50,
+      "proposal requested": 50,
+      "project requirement": 40,
+      "outsource development": 40,
+      "need solution": 35,
+      "budget": 50,
+      "approved budget": 60,
+      "looking to hire": 60,
+      "project starting": 50,
+      "vendor selection": 60,
+      "request for proposal": 70,
+      "project timeline": 40,
+      "deployment planned": 40,
+      "migration scheduled": 40
+    },
+    "negative": {
+      "student": -50,
+      "learning": -30,
+      "tutorial": -30,
+      "course": -30,
+      "job seeker": -60,
+      "open to work": -60,
+      "freelancer available": -50,
+      "portfolio": -50,
+      "giveaway": -70,
+      "airdrop": -100,
+      "i built": -8,
+      "check out my": -10,
+      "launching my": -6,
+      "crypto": -15,
+      "nsfw": -30,
+      "who is hiring": -30,
+      "who wants to be hired": -30,
+      "seeking work": -20
+    },
+    "persona": {
+      "shopify": [
+        "shopify",
+        "shopify plus",
+        "ecommerce",
+        "d2c",
+        "dtc",
+        "store",
+        "checkout"
+      ],
+      "erp": [
+        "erp",
+        "odoo",
+        "erpnext",
+        "sap",
+        "oracle",
+        "netsuite",
+        "inventory",
+        "warehouse"
+      ],
+      "crm": [
+        "crm",
+        "salesforce",
+        "hubspot",
+        "customer management",
+        "pipeline"
+      ],
+      "saas": [
+        "saas",
+        "startup",
+        "web app",
+        "application",
+        "platform",
+        "mvp"
+      ],
+      "ai": [
+        "ai",
+        "llm",
+        "chatgpt",
+        "automation",
+        "agent",
+        "chatbot"
+      ]
+    }
+  },
+  "listener_simple": {
+    "prompt": "Businesses actively seeking custom software, Shopify, SaaS, CRM/ERP implementation, AI automation, or development partners—not tutorials or job seekers.",
+    "keywords_include": "need software developer\nneed web developer\nlooking for development company\nrecommend development agency\nshopify developer needed\nneed ecommerce developer\nneed custom software\nlooking for CRM solution\nlooking for ERP solution\nbusiness automation help\nneed AI automation\nneed chatbot\nneed SaaS developer\nneed dashboard\nneed admin panel\ncustom web application\nreplace excel workflow\nmanual process automation\nERP implementation\nCRM implementation\nneed API integration\nlooking for software agency\nneed developer urgently\nneed shopify expert\nlooking for ERP consultant\nrecommend crm software\nneed custom web application\nneed SaaS platform\nneed chatbot solution\nneed internal tool\nneed workflow automation\nERP migration\nCRM migration\nneed Odoo developer\nneed ERPNext consultant\nneed vendor\nneed implementation partner\nlooking for software company\nneed software solution\nneed development partner\nbusiness process automation\nneed ERP implementation\nneed CRM implementation",
+    "keywords_ignore": "student\nlearning\ntutorial\ncourse\njob seeker\nopen to work\nfreelancer available\nportfolio\ngiveaway\nairdrop\ni built\ncheck out my\nlaunching my\ncrypto\nnsfw\nwho is hiring\nwho wants to be hired\nseeking work",
+    "platforms": {
+      "hn": true,
+      "reddit": true,
+      "x": true,
+      "linkedin_posts": true,
+      "linkedin_jobs": true,
+      "funding": true,
+      "rss": true,
+      "facebook_posts": false,
+      "facebook_groups": false,
+      "instagram_hashtags": false,
+      "instagram_reels": false
+    }
+  },
+  "free_collectors": {
+    "enabled": true,
+    "replace_treg": true,
+    "incremental": true,
+    "hn": {
+      "enabled": true,
+      "queries": [
+        "shopify",
+        "crm",
+        "erp",
+        "saas",
+        "automation",
+        "artificial intelligence",
+        "workflow",
+        "dashboard",
+        "admin panel"
+      ]
+    },
+    "reddit_rss": {
+      "enabled": true,
+      "feeds": [
+        "https://www.reddit.com/r/shopify/new/.rss",
+        "https://www.reddit.com/r/ecommerce/new/.rss",
+        "https://www.reddit.com/r/SaaS/new/.rss",
+        "https://www.reddit.com/r/startups/new/.rss",
+        "https://www.reddit.com/r/Entrepreneur/new/.rss",
+        "https://news.ycombinator.com/rss",
+        "https://techcrunch.com/category/startups/feed/"
+      ],
+      "keywords": [
+        "need software developer",
+        "need web developer",
+        "looking for development company",
+        "recommend development agency",
+        "shopify developer needed",
+        "need ecommerce developer",
+        "need custom software",
+        "looking for CRM solution",
+        "looking for ERP solution",
+        "business automation help",
+        "need AI automation",
+        "need chatbot",
+        "need SaaS developer",
+        "need dashboard",
+        "need admin panel",
+        "custom web application",
+        "replace excel workflow",
+        "manual process automation",
+        "ERP implementation",
+        "CRM implementation",
+        "need API integration"
+      ]
+    },
+    "twitter": {
+      "enabled": true,
+      "queries": [
+        "looking for software agency",
+        "need developer urgently",
+        "need shopify expert",
+        "looking for ERP consultant",
+        "recommend crm software",
+        "need custom web application",
+        "need SaaS platform",
+        "need AI automation",
+        "need chatbot solution",
+        "need internal tool",
+        "need workflow automation",
+        "ERP migration",
+        "CRM migration",
+        "need Odoo developer",
+        "need ERPNext consultant"
+      ],
+      "limit": 40,
+      "twscrape_db": "data/twscrape.db"
+    },
+    "linkedin_jobs": {
+      "enabled": true,
+      "queries": [
+        "ERP Consultant",
+        "ERP Developer",
+        "CRM Developer",
+        "Software Development Agency",
+        "Shopify Developer",
+        "Shopify Plus Expert",
+        "AI Engineer",
+        "AI Automation",
+        "Technical Consultant",
+        "Digital Transformation",
+        "ERP Implementation",
+        "Odoo Consultant",
+        "ERPNext Consultant",
+        "Custom Software",
+        "Software Vendor"
+      ],
+      "location": "United States",
+      "playwright": {}
+    },
+    "linkedin_posts": {
+      "enabled": true,
+      "queries": [
+        "need vendor",
+        "need implementation partner",
+        "looking for software company",
+        "need software solution",
+        "need development partner",
+        "business process automation",
+        "need ERP implementation",
+        "need CRM implementation",
+        "need SaaS platform",
+        "need Shopify agency"
+      ],
+      "playwright": {}
+    },
+    "instagram": {
+      "enabled": false,
+      "hashtags": [],
+      "posts_per_tag": 15
+    },
+    "facebook_pages": {
+      "enabled": false,
+      "searches": [],
+      "playwright": {}
+    },
+    "facebook_groups": {
+      "enabled": false,
+      "groups": [],
+      "playwright": {}
+    },
+    "funding_rss": {
+      "enabled": true,
+      "feeds": [
+        "https://techcrunch.com/category/startups/feed/",
+        "https://news.ycombinator.com/rss",
+        "https://www.ycombinator.com/blog/feed/",
+        "https://www.producthunt.com/feed"
+      ],
+      "keywords": [
+        "funding",
+        "raised",
+        "series",
+        "seed"
+      ]
+    },
+    "rss_extra": {
+      "enabled": true,
+      "feeds": [
+        "https://hnrss.org/newest?q=shopify",
+        "https://hnrss.org/newest?q=crm",
+        "https://hnrss.org/newest?q=erp",
+        "https://hnrss.org/newest?q=saas+development",
+        "https://hnrss.org/newest?q=need+developer"
+      ],
+      "keywords": []
+    }
+  }
+}
