@@ -7,6 +7,7 @@ from . import generic, sources
 from .free import build_free_jobs
 from .i18n import http_hint, t
 from .lead_signals import infer_run_status, merge_configs
+from .public_search import public_search_jobs
 from .scoring import score_signal
 from .treg_client import TregClient, TregError
 
@@ -137,17 +138,11 @@ class Runner:
             if source_on and items:
                 mini[block_name] = {**block, "enabled": True}
 
-        take("reddit_rss", (src_cfg.get("reddit") or {}).get("enabled"), "feeds")
-        take("twitter", (src_cfg.get("x") or {}).get("enabled"))
-        take("linkedin_posts", (src_cfg.get("linkedin_posts") or {}).get("enabled"))
-        take("linkedin_jobs", (src_cfg.get("linkedin_jobs") or {}).get("enabled"))
-        take("facebook_pages", (src_cfg.get("facebook_posts") or {}).get("enabled"), "searches")
-        take("facebook_groups", (src_cfg.get("facebook_groups") or {}).get("enabled"), "groups")
-        ig_on = (src_cfg.get("instagram_hashtags") or {}).get("enabled") or (src_cfg.get("instagram_reels") or {}).get("enabled")
-        take("instagram", ig_on, "hashtags")
-        take("funding_rss", (src_cfg.get("funding") or {}).get("enabled"), "feeds")
-        if (cfg.get("rss") or {}).get("enabled"):
-            take("rss_extra", True, "feeds")
+        # Only the listener's own subreddit feeds. Other platforms use public
+        # site search below, so global Shopify/Playwright defaults are not pulled in.
+        reddit_block = fcfg.get("reddit_rss") or {}
+        if (src_cfg.get("reddit") or {}).get("enabled") and reddit_block.get("enabled", True):
+            take("reddit_rss", True, "feeds")
         if len(mini) <= 2:
             return []
         return build_free_jobs(mini, days, self.store)
@@ -261,10 +256,12 @@ class Runner:
             if fcfg.get("enabled"):
                 jobs = jobs + build_free_jobs(fcfg, days, self.store)
             elif disabled:
+                jobs = [job for job in jobs if job[4]]
                 extra = self._free_fallbacks_for_selected(src_cfg, cfg, fcfg, days)
-                if extra:
+                public = public_search_jobs(src_cfg, cfg, [job[0] for job in jobs + extra])
+                if extra or public:
                     log.append(t(lang, "free_platform_fallback"))
-                    jobs = jobs + extra
+                jobs = jobs + extra + public
 
         seen_platform = None
         for job in jobs:

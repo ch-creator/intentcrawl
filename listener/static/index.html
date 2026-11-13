@@ -3,27 +3,50 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lead Signal Listener</title>
+<title>SignalDesk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/soft-ui-theme.css">
+<link rel="stylesheet" href="/soft-ui-theme.css?v=signaldesk2">
+<style>
+  .login-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #eef6f8; }
+  .login-page.hidden, #appShell.hidden { display: none !important; }
+  .login-card { width: min(420px, 100%); padding: 32px 28px; display: flex; flex-direction: column; gap: 10px; }
+  .login-card h1 { margin: 10px 0 0; }
+  .login-card .btn { margin-top: 8px; align-self: flex-start; }
+</style>
 </head>
 <body>
-<div class="app-shell" id="appShell">
+<div id="loginGate" class="login-page">
+  <form class="login-card surface" id="loginForm">
+    <span class="glyph" aria-hidden="true">SD</span>
+    <h1>SignalDesk</h1>
+    <p class="muted">Sign in to the client dashboard.</p>
+    <label class="form-label" for="loginUser">User ID</label>
+    <input class="form-control" id="loginUser" name="username" autocomplete="username" required>
+    <label class="form-label" for="loginPass">Password</label>
+    <input class="form-control" id="loginPass" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit" class="btn button button--primary btn-primary" id="loginBtn">Sign in</button>
+    <p class="msg bad" id="loginMsg"></p>
+  </form>
+</div>
+<div class="app-shell hidden" id="appShell">
 <aside class="sidebar surface" aria-label="Navigation">
   <div class="sidebar-brand brand">
-    <span class="glyph" aria-hidden="true">LS</span>
+    <span class="glyph" aria-hidden="true">SD</span>
     <span>
-      <strong>Lead Signal Listener</strong>
-      <small>powered by <a href="https://treg.to" target="_blank" rel="noopener">treg.to</a></small>
+      <strong>SignalDesk</strong>
+      <small id="whoami">mention tracking</small>
     </span>
   </div>
   <nav class="seg sidebar-nav" role="tablist" aria-label="Sections">
     <button type="button" data-tab="leads" aria-pressed="true" data-i18n="tab_leads"></button>
     <button type="button" data-tab="lead-signals" aria-pressed="false" data-i18n="tab_signals"></button>
     <button type="button" data-tab="sources" aria-pressed="false" data-i18n="tab_sources"></button>
+    <button type="button" data-tab="packages" aria-pressed="false">Packages</button>
+    <!-- Settings tab hidden for now
     <button type="button" data-tab="settings" aria-pressed="false" data-i18n="tab_settings"></button>
+    -->
   </nav>
   <div class="sidebar-block well">
     <div class="sidebar-kicker kicker"><span class="dot" id="liveDot"></span><span id="kickerText">loading…</span></div>
@@ -34,6 +57,9 @@
         <small id="runLivePlatform"></small>
       </div>
     </div>
+  </div>
+  <div class="sidebar-foot">
+    <button type="button" class="btn button btn-block" id="logoutBtn">Log out</button>
   </div>
 </aside>
 
@@ -225,6 +251,18 @@
     </div><!-- /listenersLegacy -->
   </section>
 
+  <section id="tab-packages" class="hidden">
+    <div class="hero">
+      <div>
+        <span class="kicker">Plans</span>
+        <h1>Packages</h1>
+        <p class="muted">Keyword and mention plans for client listening. Checkout is bank transfer until a payment gateway is connected.</p>
+      </div>
+    </div>
+    <div id="packageGrid" class="package-grid"></div>
+    <div id="bankTransfer" class="card surface"></div>
+  </section>
+
   <section id="tab-settings" class="hidden">
     <div class="hero">
       <div>
@@ -336,7 +374,7 @@ const STRINGS = {
     simple_ignore_hint: "One phrase per line. Posts matching these are penalized in scoring (spam, promos, job seekers…).",
     simple_ignore_ph: "check out my book\ngiveaway\ncrypto",
     simple_platforms_title: "Platforms",
-    simple_platforms_hint: "Checked sources run on the next listen pass. Hacker News and RSS use public feeds (no Treg). Other platforms need a Treg token unless free collectors are enabled for this signal.",
+    simple_platforms_hint: "Checked sources run on the next listen pass. Without a Treg token, each checked platform is searched through public feeds (Google News, Reddit, Hacker News).",
     simple_platforms_hint_free: "Free collectors are on for this signal — checked platforms below use RSS, public search, or local scrapers (no per-call Treg charges for those).",
     platform_src_hn: "HN Algolia search · no Treg",
     platform_src_rss: "RSS/Atom feeds · no Treg",
@@ -347,6 +385,7 @@ const STRINGS = {
     platform_src_playwright: "Playwright scrape · no Treg",
     platform_src_instaloader: "Instaloader · no Treg",
     platform_needs_treg: "Requires Treg token (Settings)",
+    platform_src_public: "Public web search · no Treg",
     show_legacy: "Show advanced configuration (legacy)",
     hide_legacy: "Hide advanced configuration",
     save_legacy: "Save advanced sources only",
@@ -430,7 +469,7 @@ function platformChipSubtitle(key, EC) {
     if (freeByKey[key]) return {text: freeByKey[key], kind: "free"};
   }
 
-  if (!hasToken) return {text: T("platform_needs_treg"), kind: "off"};
+  if (!hasToken) return {text: T("platform_src_public"), kind: "free"};
   const meta = SRC_META[key];
   return {text: meta ? meta.cost() : "", kind: "paid"};
 }
@@ -469,10 +508,14 @@ function flash(el, text, ok = true) { el.textContent = text; el.className = "msg
 
 document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  ["leads", "lead-signals", "sources", "settings"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  ["leads", "lead-signals", "sources", "settings", "packages"].forEach(t => {
+    const el = $("tab-" + t);
+    if (el) el.classList.toggle("hidden", t !== b.dataset.tab);
+  });
   if (b.dataset.tab === "lead-signals") loadLeadSignals().then(renderSignalList);
   if (b.dataset.tab === "leads") refreshLeadsListenerContext();
   if (b.dataset.tab === "sources") ensureListenersEditorHome();
+  if (b.dataset.tab === "packages") loadPackages();
   if (b.dataset.tab !== "lead-signals") SIGNAL_CARD_PANEL = null;
   if (b.dataset.tab !== "leads") closeLeadDetail();
   if (window.innerWidth < 960) $("appShell").classList.remove("sidebar-open");
@@ -609,12 +652,20 @@ function deriveSimpleFromConfig() {
     platforms,
   };
 }
+function ignorePhrases(EC) {
+  const rules = EC.rules;
+  if (Array.isArray(rules)) {
+    return rules.filter(r => String(r.type || "").toLowerCase() === "negative" && r.phrase).map(r => r.phrase).join("\n");
+  }
+  if (rules && rules.negative && typeof rules.negative === "object") return Object.keys(rules.negative).join("\n");
+  return "";
+}
 function renderSimpleConfig() {
   const EC = effectiveListenerConfig();
   const simple = EC.listener_simple || deriveSimpleFromConfig();
   $("simplePrompt").value = simple.prompt || EC.focus || "";
   $("simpleInclude").value = simple.keywords_include || "";
-  $("simpleIgnore").value = simple.keywords_ignore || "";
+  $("simpleIgnore").value = (simple.keywords_ignore || "").trim() || ignorePhrases(EC);
   const plat = simple.platforms || {};
   const grid = $("simplePlatforms");
   const hintEl = $("simplePlatformsHint");
@@ -1215,7 +1266,10 @@ function parseLeadIdFromPath() {
 
 function showLeadsTab() {
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.tab === "leads"));
-  ["leads", "sources", "settings"].forEach(t => $("tab-" + t).classList.toggle("hidden", t !== "leads"));
+  ["leads", "lead-signals", "sources", "settings", "packages"].forEach(t => {
+    const el = $("tab-" + t);
+    if (el) el.classList.toggle("hidden", t !== "leads");
+  });
 }
 
 function closeLeadDetail(fromPopstate = false) {
@@ -1578,18 +1632,93 @@ $("moreBtn").onclick = () => loadSignals(true);
 $("fQ").onkeydown = e => { if (e.key === "Enter") loadSignals(); };
 
 applyI18n();
-listenersEditorRootEl = document.getElementById("listenersEditorRoot");
-loadConfig().then(() => refreshLeadsListenerContext()).then(() => renderSignalList()).then(() => {
-  const id = parseLeadIdFromPath();
-  if (id) openLeadDetail(id, { replace: true });
-});
+let deskStarted = false;
+let signedIn = false;
+function showApp(label) {
+  signedIn = true;
+  $("loginGate").classList.add("hidden");
+  $("appShell").classList.remove("hidden");
+  if ($("whoami") && label) $("whoami").textContent = label;
+  startDesk();
+}
+function showLogin() {
+  signedIn = false;
+  deskStarted = false;
+  $("loginPass").value = "";
+  $("loginMsg").textContent = "";
+  $("appShell").classList.add("hidden");
+  $("loginGate").classList.remove("hidden");
+}
+function startDesk() {
+  if (deskStarted) return;
+  deskStarted = true;
+  listenersEditorRootEl = document.getElementById("listenersEditorRoot");
+  loadConfig().then(() => refreshLeadsListenerContext()).then(() => renderSignalList()).then(() => {
+    const id = parseLeadIdFromPath();
+    if (id) openLeadDetail(id, { replace: true });
+  });
+  pollStatus();
+}
+async function bootDesk() {
+  try {
+    const me = await api("/api/me");
+    showApp(me.client || me.username);
+  } catch {
+    showLogin();
+  }
+}
+$("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  $("loginMsg").textContent = "";
+  try {
+    const me = await api("/api/login", {method: "POST", body: JSON.stringify({
+      username: $("loginUser").value.trim(),
+      password: $("loginPass").value,
+    })});
+    const user = me.user || {};
+    showApp(user.client || user.username);
+  } catch (err) {
+    $("loginMsg").textContent = err.message;
+  }
+};
+$("logoutBtn").onclick = async () => {
+  try {
+    await api("/api/logout", {method: "POST", body: "{}"});
+  } catch (err) { /* cookie is cleared even if the request fails closed */ }
+  showLogin();
+};
+async function loadPackages() {
+  const data = await api("/api/billing");
+  const grid = $("packageGrid");
+  grid.innerHTML = (data.packages || []).map(p => `<article class="package-card surface${p.popular ? " package-card--popular" : ""}">
+    <h2>${esc(p.name)}${p.popular ? " <span class=\"pill\">Most used</span>" : ""}</h2>
+    <p class="package-price">₹${Number(p.price_inr).toLocaleString("en-IN")}<small> / ${esc(p.period)}</small></p>
+    <p class="muted">${esc(p.blurb)}</p>
+    <ul>${(p.includes || []).map(item => `<li>${esc(item)}</li>`).join("")}</ul>
+  </article>`).join("");
+  const pay = (data.billing && data.billing.payment_method) || {};
+  const account = pay.account_number ? esc(pay.account_number) : "Add the account number in data/billing.json";
+  $("bankTransfer").innerHTML = `<div class="card-body">
+    <div class="eyebrow">Payment method</div>
+    <h2>${esc(pay.label || "Bank transfer")}</h2>
+    <p class="desc">${esc(pay.instructions || "")}</p>
+    <p><b>Beneficiary</b> ${esc(pay.beneficiary_name || "—")}<br>
+    <b>Bank</b> ${esc(pay.bank_name || "Not set")}<br>
+    <b>Account</b> ${account}<br>
+    <b>IFSC</b> ${esc(pay.ifsc || "Not set")}</p>
+  </div>`;
+}
 function pollStatus() {
+  if (!signedIn) return;
   loadStatus()
     .catch(() => {})
-    .finally(() => setTimeout(pollStatus, STATUS && STATUS.running_any ? 800 : 3000));
+    .finally(() => {
+      if (signedIn) setTimeout(pollStatus, STATUS && STATUS.running_any ? 800 : 3000);
+    });
 }
-pollStatus();
+bootDesk();
 setInterval(() => {
+  if (!signedIn) return;
   loadLeadSignals().then(() => {
     if (!$("tab-lead-signals").classList.contains("hidden")) {
       if (SIGNAL_CARD_PANEL) return;

@@ -1,4 +1,4 @@
-"""Lead Signal Listener — local lead-signal monitoring powered by Treg.
+"""SignalDesk — mention tracking for client workspaces.
 
 Usage:
   python app.py                 # http://127.0.0.1:8787
@@ -30,7 +30,8 @@ def main():
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
-    ap = argparse.ArgumentParser(description="Lead Signal Listener (Treg)")
+    ap = argparse.ArgumentParser(description="SignalDesk")
+    ap.add_argument("--host", default="127.0.0.1", help="bind address; use 0.0.0.0 on the dashboard server")
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--data", default=os.path.join(ROOT, "data"), help="directory for config.json and signals.db")
     ap.add_argument("--run-once", action="store_true", help="run one pass without the web UI")
@@ -72,9 +73,9 @@ def main():
         return 0 if result.get("ok") else 1
 
     app = App(config, store, runner)
-    httpd = app.serve(port=args.port)
-    url = f"http://127.0.0.1:{args.port}"
-    print(f"Lead Signal Listener running at {url}  (Ctrl+C to quit)")
+    httpd = app.serve(host=args.host, port=args.port)
+    url = f"http://{args.host}:{args.port}"
+    print(f"SignalDesk running at {url}  (Ctrl+C to quit)")
     if not args.no_browser:
         webbrowser.open(url)
     try:

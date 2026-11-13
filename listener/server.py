@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import desk
 from .i18n import t
 from . import generic
 from .lead_signals import extract_signal_config, merge_configs, validate_signal_config
@@ -18,7 +19,11 @@ from .treg_client import BASE_URL, auth_headers
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_TYPES = {".css": "text/css; charset=utf-8", ".woff2": "font/woff2", ".png": "image/png", ".svg": "image/svg+xml"}
-ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+def allowed_hosts():
+    hosts = {"127.0.0.1", "localhost", "analytics.selfypage.ai"}
+    extra = os.environ.get("SIGNALDESK_HOSTS", "")
+    hosts.update(part.strip() for part in extra.split(",") if part.strip())
+    return hosts
 LS_API = re.compile(r"^/api/lead-signals(?:/([^/]+))?(?:/(run|duplicate|leads|runs))?$")
 
 
@@ -49,14 +54,38 @@ def _today_start_local(offset_minutes=0):
 
 def make_handler(app):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "LeadSignalListener/0.2"
+        server_version = "SignalDesk/0.3"
 
         def log_message(self, fmt, *args):
             pass
 
         def _host_ok(self):
             host = (self.headers.get("Host") or "").split(":")[0]
-            return host in ALLOWED_HOSTS
+            return host in allowed_hosts()
+
+        def _data_dir(self):
+            return os.path.dirname(app.config.path)
+
+        def _session_user(self):
+            raw = self.headers.get("Cookie") or ""
+            token = ""
+            for part in raw.split(";"):
+                name, _, value = part.strip().partition("=")
+                if name == "sd_session":
+                    token = value
+                    break
+            return desk.read_session(desk.load_access(self._data_dir()), token)
+
+        def _public_get(self, path):
+            if path in ("/", "/index.html", "/soft-ui-theme.css", "/fonts.css"):
+                return True
+            return path.startswith("/fonts/") or path.startswith("/leads/")
+
+        def _set_session_cookie(self, token):
+            self.send_header(
+                "Set-Cookie",
+                f"sd_session={token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=1209600",
+            )
 
         def _send(self, code, body, ctype="application/json; charset=utf-8", extra=None):
             if not isinstance(body, (bytes, bytearray)):
@@ -114,7 +143,11 @@ def make_handler(app):
             offset = int(tz) if tz is not None and str(tz).lstrip("-").isdigit() else 0
             today = _today_start_local(offset)
             out = []
+            user = getattr(self, "user", None) or self._session_user()
+            client_name = (user or {}).get("client") or ""
             for row in app.store.list_lead_signals():
+                if client_name and row.get("name") != client_name:
+                    continue
                 st = app.store.lead_signal_stats(row["id"], today_start=today)
                 if app.runner.running and app.runner.running_signal_id == row["id"]:
                     st = {**st, "running": True}
@@ -135,6 +168,21 @@ def make_handler(app):
                 return self._send(403, {"error": "forbidden host"})
             u = urllib.parse.urlparse(self.path)
             qs = urllib.parse.parse_qs(u.query)
+            if u.path == "/api/me":
+                user = self._session_user()
+                if not user:
+                    return self._send(401, {"error": "login required"})
+                return self._send(200, user)
+            if u.path == "/api/billing":
+                user = self._session_user()
+                if not user:
+                    return self._send(401, {"error": "login required"})
+                return self._send(200, {"packages": desk.packages(), "billing": desk.load_billing(self._data_dir())})
+            if not self._public_get(u.path):
+                user = self._session_user()
+                if not user:
+                    return self._send(401, {"error": "login required"})
+                self.user = user
             if u.path in ("/", "/index.html") or (
                 u.path.startswith("/leads/") and u.path[7:].strip("/").isdigit()
             ):
@@ -142,7 +190,7 @@ def make_handler(app):
                     return self._send(200, f.read(), "text/html; charset=utf-8")
             if u.path == "/soft-ui-theme.css":
                 with open(os.path.join(STATIC_DIR, "soft-ui-theme.css"), "rb") as f:
-                    return self._send(200, f.read(), "text/css; charset=utf-8", {"Cache-Control": "max-age=86400"})
+                    return self._send(200, f.read(), "text/css; charset=utf-8", {"Cache-Control": "no-store"})
             if u.path == "/fonts.css" or u.path.startswith("/fonts/"):
                 rel = os.path.normpath(u.path.lstrip("/"))
                 full = os.path.join(STATIC_DIR, rel)
@@ -239,6 +287,35 @@ def make_handler(app):
                 body = self._json_body()
             except (ValueError, json.JSONDecodeError) as e:
                 return self._send(400, {"error": str(e)})
+            if u.path == "/api/login":
+                access = desk.load_access(self._data_dir())
+                user = desk.check_password(access, body.get("username"), body.get("password"))
+                if not user:
+                    return self._send(401, {"error": "Invalid user ID or password"})
+                token = desk.make_session(access, user["username"])
+                body_bytes = json.dumps({"ok": True, "user": user}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body_bytes)))
+                self.send_header("Cache-Control", "no-store")
+                self._set_session_cookie(token)
+                self.end_headers()
+                self.wfile.write(body_bytes)
+                return
+            if u.path == "/api/logout":
+                body_bytes = b'{"ok": true}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body_bytes)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Set-Cookie", "sd_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0")
+                self.end_headers()
+                self.wfile.write(body_bytes)
+                return
+            user = self._session_user()
+            if not user:
+                return self._send(401, {"error": "login required"})
+            self.user = user
             try:
                 if u.path == "/api/config":
                     app.config.update(body)
@@ -320,6 +397,10 @@ def make_handler(app):
         def _mutate_lead_signal(self):
             if not self._host_ok():
                 return self._send(403, {"error": "forbidden host"})
+            user = self._session_user()
+            if not user:
+                return self._send(401, {"error": "login required"})
+            self.user = user
             u = urllib.parse.urlparse(self.path)
             m = LS_API.match(u.path)
             if not m or not m.group(1) or m.group(2):
@@ -350,6 +431,10 @@ def make_handler(app):
         def do_DELETE(self):
             if not self._host_ok():
                 return self._send(403, {"error": "forbidden host"})
+            user = self._session_user()
+            if not user:
+                return self._send(401, {"error": "login required"})
+            self.user = user
             u = urllib.parse.urlparse(self.path)
             m = LS_API.match(u.path)
             if not m or not m.group(1):
