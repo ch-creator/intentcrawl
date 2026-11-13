@@ -1,5 +1,7 @@
-# local data: config (contains your Treg token) and the leads database
-data/
+# local data: Treg token, logins, and billing stay on the machine.
+# signals.db is tracked so production can pull the same listeners and leads.
+data/*
+!data/signals.db
 
 # secrets / environment files — never commit
 .env
